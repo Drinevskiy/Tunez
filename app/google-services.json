@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "725546079396",
+    "firebase_url": "https://tunez-51e01-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "tunez-51e01",
+    "storage_bucket": "tunez-51e01.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:725546079396:android:0d559f2d999cde16c80231",
+        "android_client_info": {
+          "package_name": "com.example.tunez"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyByejcloTFjF7fsFHJ-0hshWm02VXCg-hM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
