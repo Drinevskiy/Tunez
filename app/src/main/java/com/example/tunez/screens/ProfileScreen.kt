@@ -14,11 +14,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.adamratzman.spotify.auth.implicit.startSpotifyImplicitLoginActivity
 import com.adamratzman.spotify.auth.pkce.startSpotifyClientPkceLoginActivity
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.LoginActivity
 import com.example.tunez.activities.RegistrationActivity
 import com.example.tunez.activities.Routes
+import com.example.tunez.auth.SpotifyImplicitLoginActivityImpl
+//import com.example.tunez.auth.SpotifyImplicitLoginActivityImpl
 import com.example.tunez.auth.SpotifyPkceLoginActivityImpl
 import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.utils.toast
@@ -35,7 +38,12 @@ fun ProfileScreen(spotifyService: SpotifyService, activity: BaseActivity, navCon
             Button(onClick = {
                 activity.startSpotifyClientPkceLoginActivity(SpotifyPkceLoginActivityImpl::class.java)
             }) {
-                Text("Connect to Spotify (spotify-web-api-kotlin integration, PKCE auth)")
+                Text("PKCE")
+            }
+            Button(onClick = {
+//                activity.startSpotifyImplicitLoginActivity(SpotifyImplicitLoginActivityImpl::class.java)
+            }) {
+                Text("Implicit")
             }
             Button(onClick = {
                 activity.startActivity(Intent(activity, LoginActivity::class.java))

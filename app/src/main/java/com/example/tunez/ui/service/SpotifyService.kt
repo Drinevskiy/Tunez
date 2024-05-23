@@ -5,17 +5,20 @@ import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.RecommendationSeed
 import com.example.tunez.activities.ActionHomeActivity
 import com.example.tunez.activities.BaseActivity
+import com.example.tunez.activities.MainActivity
 import com.example.tunez.auth.guardValidSpotifyApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 
 class SpotifyService(private val baseActivity: BaseActivity) {
-//    private val CLIENT_ID = "9f8034d574a341afad46a90ccaf04f04"
+    //    private val CLIENT_ID = "9f8034d574a341afad46a90ccaf04f04"
 //    private val REDIRECT_URI = "com.example.tunez://callback"
 //    private var spotifyAppRemote: SpotifyAppRemote? = null
 //    lateinit var spotifyApi: SpotifyClientApi
@@ -76,37 +79,37 @@ class SpotifyService(private val baseActivity: BaseActivity) {
 //
 //    }
     // Play Playlist
-    suspend fun play(trackURI: ContextUri, callback: (Boolean) -> Unit){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){api ->
+    suspend fun play(trackURI: ContextUri, callback: (Boolean) -> Unit) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.startPlayback(contextUri = trackURI)
             callback(api.player.getCurrentContext()!!.isPlaying)
         }
     }
 
     // Play Track
-    suspend fun play(trackURI: PlayableUri, callback: (Boolean) -> Unit){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java) { api ->
+    suspend fun play(trackURI: PlayableUri, callback: (Boolean) -> Unit) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
             callback(api.player.getCurrentContext()!!.isPlaying)
         }
     }
 
-    suspend fun resume(callback: (Boolean) -> Unit){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java) { api ->
+    suspend fun resume(callback: (Boolean) -> Unit) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.resume()
             callback(api.player.getCurrentContext()!!.isPlaying)
         }
     }
 
-    suspend fun pause(callback: (Boolean) -> Unit){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java) { api ->
+    suspend fun pause(callback: (Boolean) -> Unit) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.pause()
             callback(api.player.getCurrentContext()!!.isPlaying)
         }
     }
 
     suspend fun next(callback: (Boolean) -> Unit) {
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java) { api ->
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
 //            if(queueIsEmpty() == true){
             //addRandomTracksToQueue()
 //            }
@@ -115,48 +118,78 @@ class SpotifyService(private val baseActivity: BaseActivity) {
         }
     }
 
-    suspend fun previous(callback: (Boolean) -> Unit){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){api ->
+    suspend fun previous(callback: (Boolean) -> Unit) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.skipBehind()
             callback(api.player.getCurrentContext()!!.isPlaying)
         }
     }
 
-    suspend fun getCurrentTrack(callback: (String?, String?)->Unit) {
+    suspend fun getCurrentTrack(callback: (String?, String?) -> Unit) {
         var name: String? = "Name"
         var author: String? = "Author"
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){api ->
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             name = api.player.getCurrentContext()?.item?.asTrack?.name
             author = api.player.getCurrentContext()?.item?.asTrack?.artists?.get(0)?.name
             callback(name, author)
         }
     }
 
-    private suspend fun queueIsEmpty(): Boolean?{
-        return baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){api ->
+    private suspend fun queueIsEmpty(): Boolean? {
+        return baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.player.getUserQueue().queue.isEmpty()
         }
     }
 
-    private suspend fun addRandomTracksToQueue(){
-        baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){api ->
+    private suspend fun addRandomTracksToQueue() {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             val tracks = api.browse.getRecommendations().tracks
-            tracks.forEach{api.player.addItemToEndOfQueue(it.uri)}
+            tracks.forEach { api.player.addItemToEndOfQueue(it.uri) }
         }
     }
 
-    suspend fun getSavedTracks(): List<com.adamratzman.spotify.models.SavedTrack>?{
-        return baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java) { api ->
+    suspend fun getSavedTracks(): List<com.adamratzman.spotify.models.SavedTrack>? {
+        return baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             api.library.getSavedTracks().items
         }
     }
 
-    suspend fun getTracks(query: String): List<com.adamratzman.spotify.models.Track>?{
-        return baseActivity.guardValidSpotifyApi(classBackTo = ActionHomeActivity::class.java){ api ->
-            if(query.isNotEmpty()) {
+    suspend fun getTracks(query: String): List<com.adamratzman.spotify.models.Track>? {
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
                 api.search.searchTrack(query, limit = 15, offset = 0).items
-            } else{
-                api.browse.getTrackRecommendations(seedGenres = listOf("rock", "metal"), limit = 10).tracks
+            }
+        }
+    }
+
+    suspend fun getRecommendedTracks(): List<com.adamratzman.spotify.models.Track>? {
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                api.browse.getTrackRecommendations(
+                    seedGenres = listOf("rock", "metal"),
+                    limit = 2
+                ).tracks
+
+            }
+        }
+    }
+
+    suspend fun getNewReleases(): List<com.adamratzman.spotify.models.Track?>? {
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                val result = api.browse.getNewReleases(
+                    limit = 10
+                )
+                var tracks: List<com.adamratzman.spotify.models.Track?> = listOf()
+                result.forEach {
+                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()
+                    tracks  = tracks.plus(track)
+                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()
+                    tracks  = tracks.plus(track)
+                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()
+                    tracks  = tracks.plus(track)
+                }
+                tracks
             }
         }
     }

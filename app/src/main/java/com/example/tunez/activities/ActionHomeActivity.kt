@@ -52,13 +52,14 @@ class ActionHomeActivity : BaseActivity() {
 
         guardValidSpotifyApi(ActionHomeActivity::class.java) { api ->
             if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
-        }
-        setContent {
-            TunezTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Greeting(this)
+
+            setContent {
+                TunezTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Greeting(this)
+                    }
                 }
             }
         }
@@ -190,7 +191,7 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
             IconButton(
                 onClick = {
                     runBlocking {
-                        searchResult = spotifyService.getTracks(query)
+//                        searchResult = spotifyService.getTracks(query)
                     }
                 }) {
                 Icon(imageVector = Icons.Default.Search, contentDescription = "")

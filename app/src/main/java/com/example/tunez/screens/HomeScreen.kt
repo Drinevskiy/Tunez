@@ -46,9 +46,9 @@ import kotlinx.coroutines.runBlocking
 
 @Composable
 fun HomeScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier: Modifier = Modifier) {
-    activity.guardValidSpotifyApi(MainActivity::class.java) { api ->
-        if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
-    }
+//    activity.guardValidSpotifyApi(MainActivity::class.java) { api ->
+//        if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
+//    }
 //    val spotifyService: SpotifyService = SpotifyService(activity)
     var name: String? by remember{ mutableStateOf("") }
     var author: String? by remember{ mutableStateOf("") }

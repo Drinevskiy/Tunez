@@ -32,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.adamratzman.spotify.auth.implicit.startSpotifyImplicitLoginActivity
+import com.example.tunez.auth.SpotifyImplicitLoginActivityImpl
 import com.example.tunez.auth.SpotifyPkceLoginActivityImpl
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.utils.toast
@@ -103,6 +105,18 @@ fun LoginPage(activity: Activity, modifier: Modifier = Modifier){
                 }
             ){
                 Text(text="Sign up")
+            }
+            Button(
+                onClick={
+                    activity.startActivity(Intent(activity, MainActivity::class.java))
+                }
+            ){
+                Text(text="Main")
+            }
+            Button(onClick = {
+                activity.startSpotifyImplicitLoginActivity(SpotifyImplicitLoginActivityImpl::class.java)
+            }) {
+                Text("Implicit")
             }
         }
 

@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -26,35 +27,40 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.adamratzman.spotify.SpotifyException
 import com.example.tunez.auth.SpotifyPkceLoginActivityImpl
+import com.example.tunez.auth.guardValidSpotifyApi
 import com.example.tunez.screens.HomeScreen
 import com.example.tunez.screens.ProfileScreen
+import com.example.tunez.screens.ReleasesScreen
 import com.example.tunez.screens.SearchScreen
 import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.ui.theme.TunezTheme
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setContent {
-            TunezTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
+//        guardValidSpotifyApi(MainActivity::class.java) { api ->
+//            if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
+//            Log.i("MainActivity", "Рабочее API")
+            setContent {
+                TunezTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
 //                    Firebase.auth.signOut()
 //                    val user = Firebase.auth.currentUser
 //                    toast(user?.email.toString())
 //                    if(user==null){
 //                        this.startActivity(Intent(this, LoginActivity::class.java))
 //                    }
-//                    startActivity(Intent(this, SpotifyPkceLoginActivityImpl::class.java))
-//                    Text("Success")
-//                    HomeScreen(SpotifyService(this), this)
-                    AuthPage(this)
+                        AuthPage(this)
+                    }
                 }
             }
-        }
+//        }
     }
 
     override fun onStop() {
@@ -86,6 +92,10 @@ fun AuthPage(activity: BaseActivity) {
 
             composable(Routes.Profile.route) {
                 ProfileScreen(spotifyService, activity, navController)
+            }
+
+            composable(Routes.Releases.route) {
+                ReleasesScreen(spotifyService, activity)
             }
         }
         BottomNavigationBar(navController)
@@ -127,6 +137,11 @@ object NavBarItems {
             route = "home"
         ),
         BarItem(
+            title = "Releases",
+            image = Icons.Default.AddCircle,
+            route = "releases"
+        ),
+        BarItem(
             title = "Search",
             image = Icons.Default.Search,
             route = "search"
@@ -149,6 +164,7 @@ sealed class Routes(val route: String) {
     object Home : Routes("home")
     object Search : Routes("search")
     object Profile : Routes("profile")
+    object Releases : Routes("releases")
 }
 //    MaterialTheme {
 //        val typography = MaterialTheme.typography
