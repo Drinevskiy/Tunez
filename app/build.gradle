@@ -88,11 +88,18 @@ dependencies {
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 
 
+    //Images
+    implementation("com.github.bumptech.glide:glide:4.13.1")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.13.1")
+    implementation("com.github.skydoves:landscapist-glide:1.5.0" )
+
+    //Spotify
     implementation 'com.spotify.android:auth:2.1.1'
     implementation("com.adamratzman:spotify-api-kotlin-core:4.1.1")
     implementation files('libs/spotify-app-remote-release-0.8.0.aar')
     implementation "com.google.code.gson:gson:2.10"
 
+    //Firebase
     implementation platform('com.google.firebase:firebase-bom:33.0.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-auth'

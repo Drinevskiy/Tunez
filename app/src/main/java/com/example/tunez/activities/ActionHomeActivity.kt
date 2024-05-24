@@ -68,7 +68,7 @@ class ActionHomeActivity : BaseActivity() {
 
 @Composable
 fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
-    val spotifyService: SpotifyService = SpotifyService(activity)
+    val spotifyService: SpotifyService = SpotifyService()
     var name: String? by remember{ mutableStateOf("") }
     var author: String? by remember{ mutableStateOf("") }
     var isPlaying by remember { mutableStateOf(false) }
@@ -120,9 +120,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                 onClick = {
                     runBlocking {
                         launch{
-                            spotifyService.previous {
-                                isPlaying = it
-                            }
+//                            spotifyService.previous {
+////                                isPlaying = it
+//                            }
                             spotifyService.getCurrentTrack { n, a ->
                                 name = n
                                 author = a
@@ -138,9 +138,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                 IconButton(
                     onClick = {
                         runBlocking {
-                            spotifyService.pause {
-                                isPlaying = it
-                            }
+//                            spotifyService.pause {
+//                                isPlaying = it
+//                            }
                         }
                     },
                 ) {
@@ -154,9 +154,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                     onClick = {
                         runBlocking {
                             launch{
-                                spotifyService.resume {
-                                    isPlaying = it
-                                }
+//                                spotifyService.resume {
+////                                    isPlaying = it
+//                                }
                                 spotifyService.getCurrentTrack { n, a ->
                                     name = n
                                     author = a
@@ -173,9 +173,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                 onClick = {
                     runBlocking {
                         launch{
-                            spotifyService.next {
-                                isPlaying = it
-                            }
+//                            spotifyService.next {
+////                                isPlaying = it
+//                            }
                             spotifyService.getCurrentTrack { n, a ->
                                 name = n
                                 author = a

@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.appcompat.app.AppCompatActivity
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.data.Model
+import com.example.tunez.ui.service.SpotifyService
 
 abstract class BaseActivity : AppCompatActivity() {
     lateinit var model: Model

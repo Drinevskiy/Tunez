@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -28,6 +30,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.adamratzman.spotify.SpotifyException
+import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.auth.SpotifyPkceLoginActivityImpl
 import com.example.tunez.auth.guardValidSpotifyApi
 import com.example.tunez.screens.HomeScreen
@@ -40,27 +43,21 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 
 class MainActivity : BaseActivity() {
+    val myApplication: SpotifyPlaygroundApplication
+        get() = application as SpotifyPlaygroundApplication
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        guardValidSpotifyApi(MainActivity::class.java) { api ->
-//            if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
-//            Log.i("MainActivity", "Рабочее API")
+        myApplication.spotifyService.baseActivity = this
             setContent {
                 TunezTheme {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                     ) {
-//                    Firebase.auth.signOut()
-//                    val user = Firebase.auth.currentUser
-//                    toast(user?.email.toString())
-//                    if(user==null){
-//                        this.startActivity(Intent(this, LoginActivity::class.java))
-//                    }
-                        AuthPage(this)
+
+                        NavPage(this, myApplication.spotifyService)
                     }
                 }
             }
-//        }
     }
 
     override fun onStop() {
@@ -77,8 +74,8 @@ class MainActivity : BaseActivity() {
 }
 
 @Composable
-fun AuthPage(activity: BaseActivity) {
-    val spotifyService: SpotifyService = SpotifyService(activity)
+fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
+//    val spotifyService: SpotifyService =
     val navController = rememberNavController()
     Column {
         NavHost(navController = navController, startDestination = Routes.Home.route, modifier = Modifier.weight(1f)) {
@@ -207,5 +204,3 @@ sealed class Routes(val route: String) {
 //            }
 //        }
 //    }
-
-

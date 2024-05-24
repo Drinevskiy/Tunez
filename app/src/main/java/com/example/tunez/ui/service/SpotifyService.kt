@@ -3,6 +3,7 @@ package com.example.tunez.ui.service
 import com.adamratzman.spotify.models.ContextUri
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.RecommendationSeed
+import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.ActionHomeActivity
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.MainActivity
@@ -17,7 +18,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 
-class SpotifyService(private val baseActivity: BaseActivity) {
+class SpotifyService() {
+    lateinit var baseActivity: BaseActivity
     //    private val CLIENT_ID = "9f8034d574a341afad46a90ccaf04f04"
 //    private val REDIRECT_URI = "com.example.tunez://callback"
 //    private var spotifyAppRemote: SpotifyAppRemote? = null
@@ -81,47 +83,63 @@ class SpotifyService(private val baseActivity: BaseActivity) {
     // Play Playlist
     suspend fun play(trackURI: ContextUri, callback: (Boolean) -> Unit) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-            api.player.startPlayback(contextUri = trackURI)
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.startPlayback(contextUri = trackURI)
+            }
         }
     }
 
     // Play Track
     suspend fun play(trackURI: PlayableUri, callback: (Boolean) -> Unit) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-            api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
+            }
         }
     }
 
-    suspend fun resume(callback: (Boolean) -> Unit) {
+    suspend fun resume() {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-            api.player.resume()
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.resume()
+            }
         }
     }
 
-    suspend fun pause(callback: (Boolean) -> Unit) {
+    suspend fun pause() {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-            api.player.pause()
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.pause()
+            }
         }
     }
 
-    suspend fun next(callback: (Boolean) -> Unit) {
+    suspend fun next() {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-//            if(queueIsEmpty() == true){
-            //addRandomTracksToQueue()
-//            }
-            api.player.skipForward()
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.skipForward()
+                api.player.getCurrentContext()!!.item?.asTrack
+            }
         }
     }
 
-    suspend fun previous(callback: (Boolean) -> Unit) {
+    suspend fun previous() {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-            api.player.skipBehind()
-            callback(api.player.getCurrentContext()!!.isPlaying)
+            withContext(Dispatchers.IO) {
+                api.player.skipBehind()
+            }
+        }
+    }
+
+    suspend fun setPositionAndResume(position: Float) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            withContext(Dispatchers.IO) {
+                api.player.seek(position.toLong() * 1000)
+                if (!api.player.getCurrentContext()!!.isPlaying){
+                    resume()
+                }
+                api.player.getCurrentContext()!!.progressMs
+            }
         }
     }
 
@@ -169,7 +187,6 @@ class SpotifyService(private val baseActivity: BaseActivity) {
                     seedGenres = listOf("rock", "metal"),
                     limit = 2
                 ).tracks
-
             }
         }
     }
@@ -193,4 +210,14 @@ class SpotifyService(private val baseActivity: BaseActivity) {
             }
         }
     }
+
+    suspend fun playableUriToTrack(playableUri: PlayableUri): Track?{
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                api.tracks.getTrack(playableUri.uri)
+            }
+        }
+    }
+
+
 }

@@ -43,6 +43,7 @@ import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.MainActivity
 import com.example.tunez.auth.guardValidSpotifyApi
 import com.example.tunez.ui.service.SpotifyService
+import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.SearchViewModel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -50,7 +51,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.supervisorScope
 
 @Composable
-fun SearchScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier: Modifier = Modifier, vm: SearchViewModel = viewModel()) {
+fun SearchScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier: Modifier = Modifier, vm: SearchViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
 //    activity.guardValidSpotifyApi(MainActivity::class.java) { api ->
 //        if (!api.isTokenValid(true).isValid) throw SpotifyException.ReAuthenticationNeededException()
 //    }
@@ -63,7 +64,8 @@ fun SearchScreen(spotifyService: SpotifyService, activity: BaseActivity, modifie
             IconButton(
                 onClick = {
                     scope.launch {
-                        searchResult = spotifyService.getTracks(vm.query)
+                        vm.search()
+//                        searchResult = spotifyService.getTracks(vm.query)
                     }
                 }) {
                 Icon(imageVector = Icons.Default.Search, contentDescription = "")
@@ -79,8 +81,8 @@ fun SearchScreen(spotifyService: SpotifyService, activity: BaseActivity, modifie
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.fillMaxWidth()
         ){
-            if(searchResult != null) {
-                items(searchResult!!) { item ->
+            if(vm.searchResult != null) {
+                items(vm.searchResult!!) { item ->
                     Button(
                         onClick = {
                             runBlocking{
@@ -94,7 +96,7 @@ fun SearchScreen(spotifyService: SpotifyService, activity: BaseActivity, modifie
                         },
                         modifier = Modifier
                             .height(42.dp)) {
-                        Text("${item.artists.get(0).name} - ${item.name}", fontSize = 14.sp, modifier = Modifier
+                        Text("${item.artists.map { it.name }.joinToString(", ")} - ${item.name}", fontSize = 14.sp, modifier = Modifier
                             .padding(5.dp)
                             .fillMaxWidth())
                     }
