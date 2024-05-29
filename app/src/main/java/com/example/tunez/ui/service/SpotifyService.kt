@@ -1,9 +1,11 @@
 package com.example.tunez.ui.service
 
+import android.util.Log
 import com.adamratzman.spotify.models.ContextUri
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.RecommendationSeed
 import com.adamratzman.spotify.models.Track
+import com.adamratzman.spotify.utils.Market
 import com.example.tunez.activities.ActionHomeActivity
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.MainActivity
@@ -81,16 +83,16 @@ class SpotifyService() {
 //
 //    }
     // Play Playlist
-    suspend fun play(trackURI: ContextUri, callback: (Boolean) -> Unit) {
+    suspend fun play(playlistUri: ContextUri) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             withContext(Dispatchers.IO) {
-                api.player.startPlayback(contextUri = trackURI)
+                api.player.startPlayback(contextUri = playlistUri)
             }
         }
     }
 
     // Play Track
-    suspend fun play(trackURI: PlayableUri, callback: (Boolean) -> Unit) {
+    suspend fun play(trackURI: PlayableUri) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             withContext(Dispatchers.IO) {
                 api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
@@ -180,33 +182,43 @@ class SpotifyService() {
         }
     }
 
-    suspend fun getRecommendedTracks(): List<com.adamratzman.spotify.models.Track>? {
+    suspend fun getRecommendedTracks(list: List<String>): List<com.adamratzman.spotify.models.Track>? {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                Log.i("spotifyService", list.joinToString(", "))
+
                 api.browse.getTrackRecommendations(
-                    seedGenres = listOf("rock", "metal"),
-                    limit = 2
+                    seedGenres = list,
+                    limit = 10
                 ).tracks
             }
         }
     }
 
-    suspend fun getNewReleases(): List<com.adamratzman.spotify.models.Track?>? {
+    suspend fun getNewReleases(): List<com.adamratzman.spotify.models.Track>? {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
                 val result = api.browse.getNewReleases(
-                    limit = 10
+                    limit = 5
                 )
-                var tracks: List<com.adamratzman.spotify.models.Track?> = listOf()
+//                val res = api.browse.getFeaturedPlaylists(limit = 5).playlists.get(2).toFullPlaylist()?.tracks?.items?.take(15)?.map { it.track!!.asTrack!! }
+//                val result = api.personalization.getTopTracks()
+                var tracks: List<com.adamratzman.spotify.models.Track> = listOf()
                 result.forEach {
-                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()
+                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()!!
                     tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()
+                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()!!
                     tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()
+                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()!!
+                    tracks  = tracks.plus(track)
+                    track = it.toFullAlbum()?.tracks!![3].toFullTrack()!!
+                    tracks  = tracks.plus(track)
+                    track = it.toFullAlbum()?.tracks!![4].toFullTrack()!!
                     tracks  = tracks.plus(track)
                 }
                 tracks
+//                res
+//                result.toList()
             }
         }
     }
@@ -219,5 +231,28 @@ class SpotifyService() {
         }
     }
 
+    suspend fun getCurrentProgress(): Int?{
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+//                val currentContext = api.player.getCurrentContext()
+//                Log.i("context", currentContext.toString())
+//                var progressMs: Int = 0
+//                if (currentContext != null) {
+//                    Log.i("context", "not null")
+//
+//                    progressMs = currentContext.progressMs!!
+//                }
+//                progressMs
+                api.player.getCurrentContext()?.progressMs
+            }
+        }
+    }
 
+    fun getDevices() {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            withContext(Dispatchers.IO) {
+                Log.i("context", api.player.getDevices().toString())
+            }
+        }
+    }
 }

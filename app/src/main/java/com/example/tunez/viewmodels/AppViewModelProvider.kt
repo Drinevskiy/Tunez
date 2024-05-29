@@ -12,17 +12,29 @@ import com.example.tunez.ui.service.SpotifyService
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
-        // Initializer for ItemEditViewModel
+        initializer {
+            HomeViewModel(
+                spotifyService = application().spotifyService,
+                application = application()
+            )
+        }
         initializer {
             SearchViewModel(
                 spotifyService = application().spotifyService
             )
         }
         initializer {
-            HomeViewModel(
-                spotifyService = application().spotifyService,
-                application = application()
+            ReleasesViewModel(
+                spotifyService = application().spotifyService
             )
+        }
+        initializer {
+            RecommendationsViewModel(
+                spotifyService = application().spotifyService
+            )
+        }
+        initializer {
+            ProfileViewModel()
         }
     }
 }

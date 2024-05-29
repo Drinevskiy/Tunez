@@ -65,16 +65,25 @@ import com.example.tunez.viewmodels.HomeViewModel
 import com.example.tunez.viewmodels.SearchViewModel
 import com.skydoves.landscapist.glide.GlideImage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 @Composable
-fun HomeScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier: Modifier = Modifier, vm: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
+fun HomeScreen(modifier: Modifier = Modifier, vm: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
     val uiState by vm.homeUiState.collectAsState()
     val scope = rememberCoroutineScope()
+    // Задержка для для получения токена
+    LaunchedEffect(Unit) {
+        vm.getDevices()
+        delay(2000)
+    }
     Column(modifier = Modifier.padding(20.dp)) {
         GlideImage(
-            imageModel = uiState.image?.url,
+            imageModel =
+            uiState.image?.url ?:
+            "https://sun9-25.userapi.com/impg/Z3epnPuW1AG9bY8vNk6CxvPUfDC8Glje-nfRVA/tHFcX2ef9rk.jpg?size=900x900&quality=96&sign=27b00a943c3ac22fbaa34b00db97bea8&c_uniq_tag=DeuKuphk22jYBIyArxc3iAF8-bHFXuRzK_HtgZbSCrM&type=album",
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
@@ -94,7 +103,7 @@ fun HomeScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier:
         )
         Spacer(modifier = Modifier.weight(1f))
 
-        MusicProgressBar(vm, scope)
+        MusicProgressBar(uiState, vm)
         Row(horizontalArrangement = Arrangement.SpaceAround) {
             IconButton(
                 onClick = {
@@ -124,6 +133,7 @@ fun HomeScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier:
                     onClick = {
                         scope.launch {
                             vm.resume()
+//                            vm.getDevices()
                         }
                     },
                 ) {
@@ -146,23 +156,21 @@ fun HomeScreen(spotifyService: SpotifyService, activity: BaseActivity, modifier:
 
 @Composable
 fun MusicProgressBar(
+    uiState: HomeUiState,
     vm: HomeViewModel,
-    scope: CoroutineScope
 ) {
-    val uiState by vm.homeUiState.collectAsState()
-//    var isPlaying by remember { mutableStateOf(false) }
-//    var currentPlaybackPosition by remember { mutableStateOf(uiState.position) }
+//    var is_loading by remember { mutableStateOf(true) }
+    var currentPosition by remember { mutableStateOf(uiState.position) }
 
-//    LaunchedEffect(uiState.position, isPlaying) {
-//        scope.launch {
-//            if (isPlaying) {
-//                currentPlaybackPosition = uiState.position
-//            }
+    LaunchedEffect(key1 = uiState.position, key2 = uiState.isPlaying) {
+        currentPosition = uiState.position
+//        if(is_loading){
+//            delay(2500)
+//            is_loading = false
 //        }
-//    }
-//    LaunchedEffect(uiState.position) {
-//        currentPlaybackPosition = uiState.position
-//    }
+        delay(200)
+        vm.updateProgress()
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth(),
@@ -171,14 +179,13 @@ fun MusicProgressBar(
     ) {
         Column {
             Slider(
-                value = uiState.position,
+                value = currentPosition,
                 onValueChange = {
-//                    currentPlaybackPosition = it
-                    vm.changePosition(it)
+                    currentPosition = it
                 },
-//                onValueChangeFinished = {
-//                    isPlaying = !isPlaying
-//                },
+                onValueChangeFinished = {
+                    vm.changePosition(currentPosition)
+                },
 //                modifier = Modifier.weight(1f),
                 valueRange = 0f..uiState.trackLength,
                 colors = SliderDefaults.colors(
@@ -193,8 +200,7 @@ fun MusicProgressBar(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-//                    text = formatDuration(currentPlaybackPosition),
-                    text = formatDuration(uiState.position),
+                    text = formatDuration(currentPosition),
                     fontSize = 13.sp,// формат времени в минуты:секунды
                     modifier = Modifier.padding(start = 5.dp)
                     )

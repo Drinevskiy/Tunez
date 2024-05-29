@@ -83,9 +83,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                 onClick = {
                     runBlocking{
                         launch{
-                            spotifyService.play(PlayableUri.invoke("spotify:track:4Yf5bqU3NK4kNOypcrLYwU")) {
-                                isPlaying = it
-                            }
+//                            spotifyService.play(PlayableUri.invoke("spotify:track:4Yf5bqU3NK4kNOypcrLYwU")) {
+//                                isPlaying = it
+//                            }
                             spotifyService.getCurrentTrack { n, a ->
                                 name = n
                                 author = a
@@ -101,9 +101,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                 onClick = {
                     runBlocking{
                         launch{
-                            spotifyService.play(ContextUri.invoke("spotify:playlist:37i9dQZF1E39kHqVXB5cTm")) {
-                                isPlaying = it
-                            }
+//                            spotifyService.play(ContextUri.invoke("spotify:playlist:37i9dQZF1E39kHqVXB5cTm")) {
+//                                isPlaying = it
+//                            }
                             spotifyService.getCurrentTrack { n, a ->
                                 name = n
                                 author = a
@@ -213,9 +213,9 @@ fun Greeting(activity: BaseActivity, modifier: Modifier = Modifier) {
                         onClick = {
                             runBlocking{
                                 launch {
-                                    spotifyService.play(item.uri) {
-                                        isPlaying = it
-                                    }
+//                                    spotifyService.play(item.uri) {
+//                                        isPlaying = it
+//                                    }
                                     spotifyService.getCurrentTrack { n, a ->
                                         name = n
                                         author = a

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -26,20 +27,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.RecommendationUiState
 import com.example.tunez.viewmodels.RecommendationsViewModel
-import com.example.tunez.viewmodels.ReleasesUiState
-import com.example.tunez.viewmodels.ReleasesViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun ReleasesScreen(modifier: Modifier = Modifier, vm: ReleasesViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
-    val uiState by vm.releasesUiState.collectAsState()
+fun RecommendationsScreen(modifier: Modifier = Modifier, vm: RecommendationsViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
+    val uiState by vm.recommendationsUiState.collectAsState()
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize())
     {
-        Row {
+        Row() {
             Text(
-                text = "Releases",
+                text = "Recommendations",
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
@@ -50,7 +49,7 @@ fun ReleasesScreen(modifier: Modifier = Modifier, vm: ReleasesViewModel = viewMo
         Button(modifier = Modifier.fillMaxWidth().padding(8.dp),
             onClick = {
                 scope.launch {
-                    vm.getReleases()
+                    vm.getRecommendations()
                 }
             }
         ) {
@@ -60,15 +59,15 @@ fun ReleasesScreen(modifier: Modifier = Modifier, vm: ReleasesViewModel = viewMo
 }
 
 @Composable
-fun TracksList(uiState: ReleasesUiState, vm: ReleasesViewModel){
+fun TracksList(uiState: RecommendationUiState, vm: RecommendationsViewModel, modifier: Modifier = Modifier){
     LazyVerticalGrid(
         columns = GridCells.Fixed(1),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(8.dp),
         modifier = Modifier.fillMaxWidth().height(570.dp)
     ){
-        if(uiState.releases != null) {
-            items(uiState.releases!!) {
+        if(uiState.recommendations != null) {
+            items(uiState.recommendations!!) {
                 TrackRow(it){ vm.play(it.uri)}
             }
         }

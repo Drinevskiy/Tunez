@@ -26,25 +26,32 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class HomeViewModel(val spotifyService: SpotifyService, private val application: SpotifyPlaygroundApplication): AndroidViewModel(application) {
-//    var name by mutableStateOf("")
-//    var authors by mutableStateOf(listOf<String>())
-//    var isPlaying by mutableStateOf(false)
     private val context: Context
         get() = getApplication<SpotifyPlaygroundApplication>().applicationContext
     private val receiver = SpotifyBroadcastReceiver(this)
     private var _uiState = MutableStateFlow(HomeUiState())
     val homeUiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-//    var homeUiState by mutableStateOf(HomeUiState())
-//        private set
     fun updateUiState(uiState: HomeUiState){
-        _uiState.value = uiState
+        _uiState.update {
+            it.copy(
+                image = uiState.image,
+                name = uiState.name,
+                authors = uiState.authors,
+                isPlaying = uiState.isPlaying,
+                trackLength = uiState.trackLength,
+                position = uiState.position
+            )
+        }
     }
+
     init{
         context.registerSpotifyBroadcastReceiver(receiver, *SpotifyBroadcastType.entries.toTypedArray())
     }
+
     fun handleMetadata(data: SpotifyMetadataChangedData){
         viewModelScope.launch {
             val track = spotifyService.playableUriToTrack(data.playableUri)
@@ -61,21 +68,25 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
         val position = data.positionInMs.toFloat() / 1000f
         updateUiState(homeUiState.value.copy(isPlaying = data.playing, position = position))
     }
+
     fun resume(){
         viewModelScope.launch {
             spotifyService.resume()
         }
     }
+
     fun pause(){
         viewModelScope.launch {
             spotifyService.pause()
         }
     }
+
     fun next(){
         viewModelScope.launch {
             spotifyService.next()
         }
     }
+
     fun previous(){
         viewModelScope.launch {
             spotifyService.previous()
@@ -85,8 +96,23 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
     fun changePosition(position: Float) {
         viewModelScope.launch {
             spotifyService.setPositionAndResume(position)
-            updateUiState(homeUiState.value.copy(position = position))
         }
+        updateUiState(homeUiState.value.copy(position = position))
+    }
+
+    fun updateProgress(){
+        if(spotifyService != null) {
+            viewModelScope.launch {
+                val position = spotifyService.getCurrentProgress()?.div(1000f)
+                updateUiState(homeUiState.value.copy(position = position!!))
+            }
+        }
+    }
+
+    fun getDevices(){
+//        viewModelScope.launch {
+            spotifyService.getDevices()
+//        }
     }
 }
 
@@ -96,5 +122,5 @@ data class HomeUiState(
     val authors: List<String?>? = listOf<String>(),
     val isPlaying: Boolean = false,
     val trackLength: Float = 0f,
-    val position: Float = 0f
+    var position: Float = 0f
 )

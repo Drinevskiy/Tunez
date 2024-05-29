@@ -7,15 +7,57 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.adamratzman.spotify.models.PlayableUri
+import com.adamratzman.spotify.models.SpotifyImage
 import com.example.tunez.ui.service.SpotifyService
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SearchViewModel(val spotifyService: SpotifyService): ViewModel() {
-    var searchResult: List<com.adamratzman.spotify.models.Track>? by mutableStateOf(listOf())
-    var query by mutableStateOf("")
+    private var _uiState = MutableStateFlow(SearchUiState())
+    val searchUiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    fun updateUiState(uiState: SearchUiState){
+        _uiState.update {
+            it.copy(
+                searchResult = uiState.searchResult,
+                query = uiState.query
+            )
+        }
+    }
+    fun updateQuery(query: String){
+        _uiState.update {
+            it.copy(
+                query = query
+            )
+        }
+    }
+    fun clear(){
+        updateQuery("")
+    }
     fun search(){
         viewModelScope.launch {
-            searchResult = spotifyService.getTracks(query)
+            val query = searchUiState.value.query
+            if(query.isNotEmpty()){
+                val searchResult = spotifyService.getTracks(query)
+                updateUiState(searchUiState.value.copy(
+                    searchResult = searchResult,
+                    query = query
+                ))
+            }
+        }
+    }
+
+    fun play(uri: PlayableUri){
+        viewModelScope.launch {
+            spotifyService.play(uri)
         }
     }
 }
+
+data class SearchUiState(
+    var searchResult: List<com.adamratzman.spotify.models.Track>? = listOf(),
+    var query: String = ""
+)
