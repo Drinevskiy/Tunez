@@ -334,7 +334,8 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
                                         "username" to username,
                                         "email" to email,
                                         "role" to role,
-                                        "genres" to genres
+                                        "genres" to genres,
+                                        "favouriteTracks" to listOf<String>()
                                     )
                                     db.child("Users")
                                         .child(Firebase.auth.currentUser!!.uid)
@@ -344,6 +345,9 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
                                         activity,
                                         MainActivity::class.java
                                     ))
+                                }
+                                else{
+                                    isShowAlertDialog = true
                                 }
                             }
                             .addOnFailureListener {

@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -95,6 +96,8 @@ fun HomeScreen(modifier: Modifier = Modifier, vm: HomeViewModel = viewModel(fact
         Text(
             text = uiState.name!!,
             fontSize = 28.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(0.dp, 10.dp, 0.dp, 5.dp)
         )
         Text(
@@ -214,7 +217,7 @@ fun MusicProgressBar(
     }
 }
 
-private fun formatDuration(seconds: Float): String {
+fun formatDuration(seconds: Float): String {
     val totalSeconds = seconds.toInt()
     val minutes = totalSeconds / 60
     val remainingSeconds = totalSeconds % 60

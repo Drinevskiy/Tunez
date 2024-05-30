@@ -34,7 +34,9 @@ object AppViewModelProvider {
             )
         }
         initializer {
-            ProfileViewModel()
+            ProfileViewModel(
+                spotifyService = application().spotifyService
+            )
         }
     }
 }

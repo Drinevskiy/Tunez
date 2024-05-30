@@ -1,6 +1,7 @@
 package com.example.tunez.ui.service
 
 import android.util.Log
+import androidx.compose.ui.unit.Constraints
 import com.adamratzman.spotify.models.ContextUri
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.RecommendationSeed
@@ -10,6 +11,7 @@ import com.example.tunez.activities.ActionHomeActivity
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.MainActivity
 import com.example.tunez.auth.guardValidSpotifyApi
+import com.example.tunez.data.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -93,6 +95,14 @@ class SpotifyService() {
 
     // Play Track
     suspend fun play(trackURI: PlayableUri) {
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            withContext(Dispatchers.IO) {
+                api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
+            }
+        }
+    }
+
+    suspend fun playTrack(trackURI: PlayableUri) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
             withContext(Dispatchers.IO) {
                 api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
@@ -186,11 +196,20 @@ class SpotifyService() {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
                 Log.i("spotifyService", list.joinToString(", "))
-
-                api.browse.getTrackRecommendations(
-                    seedGenres = list,
-                    limit = 10
-                ).tracks
+                var tracks: List<com.adamratzman.spotify.models.Track>? = null
+                if(list.isNotEmpty()) {
+                    tracks = api.browse.getTrackRecommendations(
+                        seedGenres = list,
+                        limit = 10
+                    ).tracks
+                }
+                else{
+                    tracks = api.browse.getTrackRecommendations(
+                        seedGenres = Constants.GENRES.subList(2,6),
+                        limit = 10
+                    ).tracks
+                }
+                tracks
             }
         }
     }
@@ -227,6 +246,14 @@ class SpotifyService() {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
                 api.tracks.getTrack(playableUri.uri)
+            }
+        }
+    }
+
+    suspend fun stringUriToTrack(uri: String): Track?{
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                api.tracks.getTrack(uri)
             }
         }
     }

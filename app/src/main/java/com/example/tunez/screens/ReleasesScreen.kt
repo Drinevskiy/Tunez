@@ -24,8 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tunez.viewmodels.AppViewModelProvider
-import com.example.tunez.viewmodels.RecommendationUiState
-import com.example.tunez.viewmodels.RecommendationsViewModel
 import com.example.tunez.viewmodels.ReleasesUiState
 import com.example.tunez.viewmodels.ReleasesViewModel
 import kotlinx.coroutines.launch
@@ -69,7 +67,7 @@ fun TracksList(uiState: ReleasesUiState, vm: ReleasesViewModel){
     ){
         if(uiState.releases != null) {
             items(uiState.releases!!) {
-                TrackRow(it){ vm.play(it.uri)}
+                TrackRow(it, vm::play){vm.addToFavouriteTracks(it)}
             }
         }
     }

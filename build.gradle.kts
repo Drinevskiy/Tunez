@@ -16,7 +16,8 @@ plugins {
     id("com.diffplug.spotless") version "6.21.0"
     id("com.moowork.node") version "1.3.1"
     id("org.jetbrains.dokka") version "1.9.0"
-
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+//    alias(libs.plugins.compose-compiler) apply false
 }
 
 repositories {

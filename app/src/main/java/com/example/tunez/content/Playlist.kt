@@ -1,12 +1,9 @@
 package com.example.tunez.content
 
 
-class Playlist {
-    private var durationInSeconds: Int
-        get() {
-            TODO()
-        }
-        set(value) {}
-    private lateinit var name: String
-    private lateinit var tracks: List<Track>
-}
+data class Playlist (
+    var durationInMs: Int = 0,
+    var name: String = "No name",
+    var tracks: List<String> = listOf(),
+    var image: String? = null
+)
