@@ -127,40 +127,67 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         }
     }
     fun getFavouriteTracks(){
-        if(user != null) {
-            viewModelScope.launch {
+        var favTracks = listOf<String>()
+        var duration = 0
+        val name = "Favourite Tracks"
+        viewModelScope.launch {
+            try {
                 val db = Firebase.database.reference
-//                var tracksUri: List<String> = listOf()
-                val snapshot = db.child("Users")
+                val playlist = db.child("Users")
                     .child(Firebase.auth.currentUser!!.uid)
                     .child("favouritePlaylist")
-                    .child("favouriteTracks").get().await()
-                val tracksUri = snapshot.value as? List<String> ?: emptyList()
-                val durationSnapshot = db.child("Users")
-                    .child(Firebase.auth.currentUser!!.uid)
-                    .child("favouritePlaylist")
-                    .child("duration").get().await()
-                var duration = durationSnapshot.value?.toString()?.toIntOrNull() ?: 0
-                val nameSnapshot = db.child("Users")
-                    .child(Firebase.auth.currentUser!!.uid)
-                    .child("favouritePlaylist")
-                    .child("name").get().await()
-                var name = nameSnapshot.value.toString() ?: ""
-                Log.i("ProfileViewModel", "Name: " + name)
-                Log.i("ProfileViewModel", "Duration: " + duration.toString())
-                Log.i("ProfileViewModel", tracksUri.toString())
-                loadFavouriteImage()
+                playlist.get().addOnCompleteListener {
+                    Log.i("firebase", "success getting playlist")
+                    favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
+                    Log.i("firebase", favTracks.toString())
+                    duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
+                    playlist.setValue(
+                        mapOf(
+                            "favouriteTracks" to favTracks,
+                            "name" to name,
+                            "duration" to duration
+                        )
+                    )
+                    loadFavouriteImage()
+                    updateUiState(profileUiState.value.copy(favouritePlaylist =
+                    Playlist(
+                        durationInMs = duration,
+                        name = name,
+                        tracks = favTracks,
+                        image = profileUiState.value.favouritePlaylist.image)
+                    ))
 
-//                Log.i("ProfileViewModel", profileUiState.value.favouritePlaylist.image.toString())
-                updateUiState(profileUiState.value.copy(favouritePlaylist =
-                Playlist(
-                    durationInMs = duration,
-                    name = name,
-                    tracks = tracksUri,
-                    image = profileUiState.value.favouritePlaylist.image)
-                ))
-//                Log.i("ProfileViewModel", profileUiState.value.favouritePlaylist.image.toString())
-
+                }
+                    .addOnFailureListener {
+                        Log.e("firebase", "error getting playlist")
+                    }
+            } catch (ex: Exception) {
+                Log.e("firebase", "Error getting/setting data", ex)
+            }
+        }
+//        if(user != null) {
+//            viewModelScope.launch {
+//                val db = Firebase.database.reference
+////                var tracksUri: List<String> = listOf()
+//                val snapshot = db.child("Users")
+//                    .child(Firebase.auth.currentUser!!.uid)
+//                    .child("favouritePlaylist")
+//                    .child("favouriteTracks").get().await()
+//                val tracksUri = snapshot.value as? List<String> ?: emptyList()
+//                val durationSnapshot = db.child("Users")
+//                    .child(Firebase.auth.currentUser!!.uid)
+//                    .child("favouritePlaylist")
+//                    .child("duration").get().await()
+//                var duration = durationSnapshot.value?.toString()?.toIntOrNull() ?: 0
+//                val nameSnapshot = db.child("Users")
+//                    .child(Firebase.auth.currentUser!!.uid)
+//                    .child("favouritePlaylist")
+//                    .child("name").get().await()
+//                var name = nameSnapshot.value.toString() ?: ""
+//                Log.i("ProfileViewModel", "Name: " + name)
+//                Log.i("ProfileViewModel", "Duration: " + duration.toString())
+//                Log.i("ProfileViewModel", tracksUri.toString())
+//                loadFavouriteImage()
 //                updateUiState(profileUiState.value.copy(favouritePlaylist =
 //                Playlist(
 //                    durationInMs = duration,
@@ -168,11 +195,13 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
 //                    tracks = tracksUri,
 //                    image = profileUiState.value.favouritePlaylist.image)
 //                ))
-            }
-        }
+//            }
+//        }
     }
 
+    fun doFunction(){
 
+    }
     fun getAllUsers(){
         if(profileUiState.value.role == "admin"){
             Firebase.database.reference.child("Users").get()

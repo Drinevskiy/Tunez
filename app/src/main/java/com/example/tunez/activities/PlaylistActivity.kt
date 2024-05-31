@@ -2,7 +2,9 @@ package com.example.tunez.activities
 
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.Track
@@ -48,6 +51,7 @@ import com.example.tunez.screens.formatDuration
 import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ProfileViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -57,11 +61,15 @@ import com.skydoves.landscapist.glide.GlideImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import org.koin.androidx.compose.inject
 import kotlin.reflect.KSuspendFunction1
 
 class PlaylistActivity(): BaseActivity() {
     val myApplication: SpotifyPlaygroundApplication
         get() = application as SpotifyPlaygroundApplication
+//    vm: RecommendationsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+
+//    private val vmController: NavControllerViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val tracksUri = intent.getStringArrayListExtra("tracksUri") ?: emptyList()
@@ -87,7 +95,9 @@ class PlaylistActivity(): BaseActivity() {
 //        val onBack = bundle?.getSerializable("onBack") as? () -> Unit
 //        val onBack = intent.getSerializableExtra("onBack") as? () -> Unit
 //        val callback = onBackPressedDispatcher.addCallback(this) {
-//            onBack?.function?.invoke(Unit)
+////            vmController.goToProfile()
+//            Log.i("playlistActivity", NavBarItems.BarItems[4].route)
+//
 //        }
 }
 
@@ -95,6 +105,9 @@ class PlaylistActivity(): BaseActivity() {
 fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService, activity: BaseActivity, vm: ProfileViewModel = viewModel(factory = AppViewModelProvider.Factory)){
     val scope = rememberCoroutineScope()
     var tracks: List<Track> by remember { mutableStateOf(listOf())}
+    var durationText by remember { mutableStateOf(millisecondsToHoursAndMinutes(playlist.durationInMs))}
+    val vmController: NavControllerViewModel by inject()
+
     LaunchedEffect(Unit) {
         scope.launch {
             tracks = playlist.tracks.map { spotifyService.stringUriToTrack(it)!! }
@@ -106,7 +119,8 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService, activity:
             horizontalArrangement = Arrangement.Center) {
             IconButton(
                 onClick = {
-                    activity.onBackPressedDispatcher.onBackPressed()
+                    vmController.goToProfile()
+//                    activity.onBackPressedDispatcher.onBackPressed()
                 }
             ) {
                 Icon(
@@ -127,12 +141,13 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService, activity:
             Spacer(modifier = Modifier.weight(1f))
         }
         Text(
-            text = formatDuration((playlist.durationInMs / 1000).toFloat()),
+            text = durationText,
             textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
             modifier = Modifier
-                .padding(0.dp, 20.dp)
+                .padding(bottom = 10.dp)
+                .fillMaxWidth()
         )
         LazyVerticalGrid(
             columns = GridCells.Fixed(1),
@@ -140,37 +155,59 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService, activity:
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.fillMaxWidth()
         ){
-            items(tracks) {
-                TrackRow(it, scope, spotifyService::playTrack){
+            items(tracks) {track ->
+                TrackRow(track, scope, spotifyService::playTrack){
                     scope.launch {
                         val db = Firebase.database.reference
                         var favTracks = listOf<String>()
-                        val durationSnapshot = db.child("Users")
+                        var duration = 0
+//                        val durationSnapshot = db.child("Users")
+//                            .child(Firebase.auth.currentUser!!.uid)
+//                            .child("favouritePlaylist")
+//                            .child("duration").get().await()
+//                        var duration = durationSnapshot.value?.toString()?.toIntOrNull() ?: 0
+//                        Log.i("firebase", "Duration 1: $duration")
+//                        val snapshot = db.child("Users")
+//                            .child(Firebase.auth.currentUser!!.uid)
+//                            .child("favouritePlaylist")
+//                            .child("favouriteTracks").get().await()
+//                        favTracks = snapshot.value as? List<String> ?: emptyList()
+//                        favTracks = favTracks.minus(track.uri.uri)
+//                        duration -= track.length
+//                        Log.i("firebase", "Duration 2: $duration")
+//                        db.child("Users")
+//                            .child(user!!.uid)
+//                            .child("favouritePlaylist")
+//                            .setValue(
+//                                mapOf(
+//                                    "favouriteTracks" to favTracks,
+//                                    "name" to "Favourite Tracks",
+//                                    "duration" to duration
+//                                )
+//                            )
+                        val playlistNode = db.child("Users")
                             .child(Firebase.auth.currentUser!!.uid)
                             .child("favouritePlaylist")
-                            .child("duration").get().await()
-                        var duration = durationSnapshot.value?.toString()?.toIntOrNull() ?: 0
-                        Log.i("firebase", "Duration 1: $duration")
-                        val snapshot = db.child("Users")
-                            .child(Firebase.auth.currentUser!!.uid)
-                            .child("favouritePlaylist")
-                            .child("favouriteTracks").get().await()
-                        favTracks = snapshot.value as? List<String> ?: emptyList()
-                        favTracks = favTracks.minus(it.uri.uri)
-                        duration -= it.length
-                        Log.i("firebase", "Duration 2: $duration")
-                        db.child("Users")
-                            .child(user!!.uid)
-                            .child("favouritePlaylist")
-                            .setValue(
-                                mapOf(
-                                    "favouriteTracks" to favTracks,
-                                    "name" to "Favourite Tracks",
-                                    "duration" to duration
+                        playlistNode.get().addOnCompleteListener {
+                            Log.i("firebase", "success getting playlist")
+                            favTracks = it.result.child("favouriteTracks").value as? List<String>
+                                ?: emptyList()
+                            favTracks = favTracks.minus(track.uri.uri)
+                            Log.i("firebase", favTracks.toString())
+                            duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
+                            scope.launch {
+                                duration -= track.length
+                                playlistNode.setValue(
+                                    mapOf(
+                                        "favouriteTracks" to favTracks,
+                                        "name" to playlist.name,
+                                        "duration" to duration
+                                    )
                                 )
-                            )
-                        tracks = tracks.minus(it)
-                        vm.getFavouriteTracks()
+                                durationText = millisecondsToHoursAndMinutes(duration)
+                                tracks = tracks.minus(track)
+                            }
+                        }
                     }
                 }
             }
@@ -229,4 +266,14 @@ fun TrackRow(
             }
         }
     }
+}
+
+fun millisecondsToHoursAndMinutes(milliseconds: Int): String {
+    val totalSeconds = milliseconds / 1000
+    val hours = (totalSeconds / 3600).toInt()
+    val minutes = ((totalSeconds % 3600) / 60).toInt()
+    if(hours > 0) {
+        return "$hours h. $minutes min."
+    }
+    return "$minutes min."
 }

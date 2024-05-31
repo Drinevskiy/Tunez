@@ -8,6 +8,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.SpotifyImage
 import com.adamratzman.spotify.models.Track
@@ -64,28 +65,32 @@ class SearchViewModel(val spotifyService: SpotifyService): ViewModel() {
             viewModelScope.launch {
                 try {
                     val db = Firebase.database.reference
-                    val snapshot = db.child("Users")
+                    val playlist = db.child("Users")
                         .child(Firebase.auth.currentUser!!.uid)
                         .child("favouritePlaylist")
-                        .child("favouriteTracks").get().await()
-                    favTracks = snapshot.value as? List<String> ?: emptyList()
-                    if (track.uri.uri !in favTracks) {
-                        favTracks = favTracks.plus(track.uri.uri)
-                    }
-                    val tracks = favTracks.map { spotifyService.stringUriToTrack(it) }
-                    duration = tracks.sumOf { it?.length ?: 0 }
-
-
-                    db.child("Users")
-                        .child(user!!.uid)
-                        .child("favouritePlaylist")
-                        .setValue(
-                            mapOf(
-                                "favouriteTracks" to favTracks,
-                                "name" to "Favourite Tracks",
-                                "duration" to duration
+                    playlist.get().addOnCompleteListener {
+                        Log.i("firebase", "success getting playlist")
+                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
+                        if (track.uri.uri !in favTracks) {
+                            favTracks = favTracks.plus(track.uri.uri)
+                        }
+                        Log.i("firebase", favTracks.toString())
+                        duration = it.result.child("duration").getValue().toString().toIntOrNull() ?: 0
+                        viewModelScope.launch {
+                            duration += spotifyService.stringUriToTrack(track.uri.uri)?.length!!
+                            playlist.setValue(
+                                mapOf(
+                                    "favouriteTracks" to favTracks,
+                                    "name" to "Favourite Tracks",
+                                    "duration" to duration
+                                )
                             )
-                        )
+                        }
+
+                    }
+                    .addOnFailureListener {
+                        Log.e("firebase", "error getting playlist")
+                    }
                 } catch (ex: Exception) {
                     Log.e("firebase", "Error getting/setting data", ex)
                 }

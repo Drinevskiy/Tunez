@@ -53,7 +53,9 @@ import com.example.tunez.activities.NavBarItems
 import com.example.tunez.activities.PlaylistActivity
 import com.example.tunez.activities.Routes
 import com.example.tunez.activities.user
+import com.example.tunez.content.Playlist
 import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ProfileUiState
 import com.example.tunez.viewmodels.ProfileViewModel
 import com.google.firebase.Firebase
@@ -64,14 +66,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.koin.androidx.compose.inject
 
-//@Serializable
-//data class LambdaWrapper<T, R>(val function: (T) -> R)
+
 @Composable
 fun FavouritePlaylist(uiState: ProfileUiState, vm: ProfileViewModel, activity: BaseActivity,  navController: NavController, scope: CoroutineScope){
 //    scope.launch {
 //        vm.loadFavouriteImage()
 //    }
+    val vmNav: NavControllerViewModel by inject()
     Box(contentAlignment = Alignment.TopCenter,
         modifier = Modifier.fillMaxSize()) {
         Log.i("ProfileViewModel", uiState.favouritePlaylist.image.toString())
@@ -86,10 +89,11 @@ fun FavouritePlaylist(uiState: ProfileUiState, vm: ProfileViewModel, activity: B
                 .clip(RoundedCornerShape(8.dp))
                 .border(2.dp, Color.Black, RoundedCornerShape(8.dp))
                 .clickable {
-                    val intent = Intent(activity, PlaylistActivity::class.java)
-                    intent.putStringArrayListExtra("tracksUri", ArrayList(uiState.favouritePlaylist.tracks))
-                    intent.putExtra("playlistSerialized", Gson().toJson(uiState.favouritePlaylist))
-                    activity.startActivity(intent)
+                    vmNav.goToPlaylist(uiState.favouritePlaylist)
+//                    val intent = Intent(activity, PlaylistActivity::class.java)
+//                    intent.putStringArrayListExtra("tracksUri", ArrayList(uiState.favouritePlaylist.tracks))
+//                    intent.putExtra("playlistSerialized", Gson().toJson(uiState.favouritePlaylist))
+//                    activity.startActivity(intent)
                 },
         )
     }
@@ -215,16 +219,16 @@ fun ProfileScreen(activity: BaseActivity, navController: NavController, modifier
                         ),
                         modifier = Modifier.padding(bottom = 20.dp)
                     )
-                    Text(
-                        text = "Favourite tracks",
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 19.sp,
-                        modifier = Modifier
-                            .padding(bottom = 20.dp)
-                            .fillMaxWidth()
-                    )
                     if (uiState.favouritePlaylist.tracks.isNotEmpty()) {
+                        Text(
+                            text = "Favourite tracks",
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            modifier = Modifier
+                                .padding(bottom = 20.dp)
+                                .fillMaxWidth()
+                        )
 //                        vm.loadFavouriteImage()
                         FavouritePlaylist(uiState, vm, activity, navController, scope)
                     }

@@ -38,6 +38,9 @@ object AppViewModelProvider {
                 spotifyService = application().spotifyService
             )
         }
+        initializer {
+            NavControllerViewModel()
+        }
     }
 }
 
