@@ -3,7 +3,6 @@ package com.example.tunez.activities
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -18,57 +17,54 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.tunez.R
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.content.Playlist
+import com.example.tunez.screens.AddPlaylistScreen
+import com.example.tunez.screens.ChoosePlaylistScreen
 import com.example.tunez.screens.HomeScreen
+import com.example.tunez.screens.PlaylistScreen
 import com.example.tunez.screens.ProfileScreen
 import com.example.tunez.screens.RecommendationsScreen
 import com.example.tunez.screens.ReleasesScreen
 import com.example.tunez.screens.SearchScreen
 import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.ui.theme.TunezTheme
-import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.NavControllerViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
-import com.google.gson.Gson
 import org.koin.androidx.compose.inject
 
 var user: FirebaseUser? = Firebase.auth.currentUser
 class MainActivity : BaseActivity() {
-    val myApplication: SpotifyPlaygroundApplication
+
+    private val myApplication: SpotifyPlaygroundApplication
         get() = application as SpotifyPlaygroundApplication
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         myApplication.spotifyService.baseActivity = this
-//        myApplication.spotifyService.getDevices()
-            setContent {
-                TunezTheme {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        NavPage(this, myApplication.spotifyService)
-                    }
+        setContent {
+            TunezTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    NavPage(this, myApplication.spotifyService)
                 }
             }
+        }
 
     }
 
@@ -118,25 +114,39 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
             composable(Routes.Profile.route) {
                 ProfileScreen(activity, navController)
             }
-            composable(Routes.Playlist.route + "?name={name}&durationInMs={durationInMs}&image={image}&tracks={tracks}",
+            composable(Routes.Playlist.route + "?name={name}&durationInMs={durationInMs}&image={image}&tracks={tracks}&id={id}",
                 arguments = listOf(
                     navArgument("name") { type = NavType.StringType },
                     navArgument("durationInMs") { type = NavType.IntType },
                     navArgument("image") { type = NavType.StringType },
-                    navArgument("tracks") { type = NavType.StringType }
+                    navArgument("tracks") { type = NavType.StringType },
+                    navArgument("id") { type = NavType.StringType }
                 )
             ){
                 val name = it.arguments?.getString("name") ?: "No name"
                 val durationInMs = it.arguments?.getInt("durationInMs") ?: 0
                 val image = it.arguments?.getString("image")
                 val tracks = it.arguments?.getString("tracks")?.split(",") ?: emptyList()
+                val id = it.arguments?.getString("id")
                 val playlist = Playlist(
                     durationInMs = durationInMs,
                     name = name,
                     tracks = tracks,
-                    image = image
+                    image = image,
+                    id = id
                 )
-                PlaylistScreen(playlist = playlist, spotifyService = spotifyService, activity = activity)
+                PlaylistScreen(playlist = playlist, spotifyService = spotifyService)
+            }
+            composable(Routes.AddPlaylist.route) {
+                AddPlaylistScreen()
+            }
+            composable(Routes.ChoosePlaylist.route + "?uri={uri}",
+                arguments = listOf(
+                    navArgument("uri"){ type = NavType.StringType}
+                )
+            ) {
+                val uri = it.arguments?.getString("uri") ?: ""
+                ChoosePlaylistScreen(uri)
             }
         }
         BottomNavigationBar(navController)
@@ -216,4 +226,6 @@ sealed class Routes(val route: String) {
     object Releases : Routes("releases")
     object Profile : Routes("profile")
     object Playlist : Routes("playlist")
+    object AddPlaylist : Routes("add-playlist")
+    object ChoosePlaylist : Routes("choose-playlist")
 }

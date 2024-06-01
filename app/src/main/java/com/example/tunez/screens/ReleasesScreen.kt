@@ -24,9 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ReleasesUiState
 import com.example.tunez.viewmodels.ReleasesViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.inject
 
 @Composable
 fun ReleasesScreen(modifier: Modifier = Modifier, vm: ReleasesViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
@@ -59,6 +61,7 @@ fun ReleasesScreen(modifier: Modifier = Modifier, vm: ReleasesViewModel = viewMo
 
 @Composable
 fun TracksList(uiState: ReleasesUiState, vm: ReleasesViewModel){
+    val vmNav: NavControllerViewModel by inject()
     LazyVerticalGrid(
         columns = GridCells.Fixed(1),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -67,7 +70,7 @@ fun TracksList(uiState: ReleasesUiState, vm: ReleasesViewModel){
     ){
         if(uiState.releases != null) {
             items(uiState.releases!!) {
-                TrackRow(it, vm::play){vm.addToFavouriteTracks(it)}
+                TrackRow(it, vm::play, vm::addToFavouriteTracks, vmNav::goToChoosePlaylist)
             }
         }
     }

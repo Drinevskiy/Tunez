@@ -71,13 +71,13 @@ class SearchViewModel(val spotifyService: SpotifyService): ViewModel() {
                     playlist.get().addOnCompleteListener {
                         Log.i("firebase", "success getting playlist")
                         favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
-                        if (track.uri.uri !in favTracks) {
-                            favTracks = favTracks.plus(track.uri.uri)
-                        }
-                        Log.i("firebase", favTracks.toString())
                         duration = it.result.child("duration").getValue().toString().toIntOrNull() ?: 0
+                        Log.i("firebase", favTracks.toString())
                         viewModelScope.launch {
-                            duration += spotifyService.stringUriToTrack(track.uri.uri)?.length!!
+                            if (track.uri.uri !in favTracks) {
+                                favTracks = favTracks.plus(track.uri.uri)
+                                duration += spotifyService.stringUriToTrack(track.uri.uri)?.length!!
+                            }
                             playlist.setValue(
                                 mapOf(
                                     "favouriteTracks" to favTracks,
@@ -96,6 +96,10 @@ class SearchViewModel(val spotifyService: SpotifyService): ViewModel() {
                 }
             }
         }
+    }
+
+    fun addToPlaylist(){
+
     }
     fun play(uri: PlayableUri){
         viewModelScope.launch {

@@ -4,13 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.result.contract.ActivityResultContracts
 import com.adamratzman.spotify.SpotifyClientApi
 import com.adamratzman.spotify.SpotifyScope
 import com.adamratzman.spotify.auth.pkce.AbstractSpotifyPkceLoginActivity
-import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.BuildConfig
-import com.example.tunez.activities.ActionHomeActivity
+import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.activities.MainActivity
 import com.example.tunez.utils.toast
 

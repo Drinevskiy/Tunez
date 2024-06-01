@@ -47,11 +47,13 @@ import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.user
 import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.SearchUiState
 import com.example.tunez.viewmodels.SearchViewModel
 import com.skydoves.landscapist.glide.GlideImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.inject
 import kotlin.reflect.KFunction1
 
 @Composable
@@ -93,14 +95,7 @@ fun SearchScreen(modifier: Modifier = Modifier, vm: SearchViewModel = viewModel(
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 leadingIcon = {
-//                    IconButton(
-//                        onClick = {
-//                            scope.launch {
-//                                vm.search()
-//                            }
-//                        }) {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = "")
-//                    }
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "")
                 },
                 trailingIcon = if (uiState.query.isEmpty()) null else trailingIcon,
                 modifier = Modifier.weight(1f)
@@ -112,6 +107,7 @@ fun SearchScreen(modifier: Modifier = Modifier, vm: SearchViewModel = viewModel(
 
 @Composable
 fun TracksList(uiState: SearchUiState, vm: SearchViewModel, scope: CoroutineScope){
+    val vmNav: NavControllerViewModel by inject()
     LazyVerticalGrid(
         columns = GridCells.Fixed(1),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -120,7 +116,7 @@ fun TracksList(uiState: SearchUiState, vm: SearchViewModel, scope: CoroutineScop
     ){
         if(uiState.searchResult != null) {
             items(uiState.searchResult!!) {
-                TrackRow(it, vm::play){vm.addToFavouriteTracks(it)}
+                TrackRow(it, vm::play, vm::addToFavouriteTracks, vmNav::goToChoosePlaylist)
             }
         }
     }
@@ -129,8 +125,9 @@ fun TracksList(uiState: SearchUiState, vm: SearchViewModel, scope: CoroutineScop
 @Composable
 fun TrackRow(
     track: Track,
-    onClick: KFunction1<PlayableUri, Unit>,
-    addToFavourite: (Track) -> Unit
+    onClick: (PlayableUri) -> Unit,
+    addToFavourite: (Track) -> Unit,
+    goToChoosePlaylist: (Track) -> Unit
 ) {
     Row(modifier = Modifier
         .fillMaxWidth()
@@ -142,7 +139,6 @@ fun TrackRow(
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
-//                            .fillMaxWidth()
                 .height(65.dp)
                 .width(65.dp)
         )
@@ -155,15 +151,12 @@ fun TrackRow(
                 Text(
                     text = track.name,
                     fontSize = 22.sp,
-                    modifier = Modifier
-//                        .fillMaxWidth()
-                        .padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
                     text = track.artists.map { it.name }.joinToString(", "),
                     fontSize = 17.sp,
                     modifier = Modifier
-//                        .fillMaxWidth()
                 )
             }
             if (user != null) {
@@ -174,8 +167,10 @@ fun TrackRow(
                 ) {
                     TrackOptionMenu(
                         track = track,
-                        options = listOf("Add to favourite", "Add to playlist"),
-                        onOptionSelected = addToFavourite
+                        options = mapOf("Add to favourite" to addToFavourite, "Add to playlist" to goToChoosePlaylist),
+//                            mapOf("Add to playlist" to goToChoosePlaylist),
+//                            ),
+//                        onOptionSelected = addToFavourite
                     )
                 }
             }
@@ -186,8 +181,8 @@ fun TrackRow(
 @Composable
 fun TrackOptionMenu(
     track: Track,
-    options: List<String>,
-    onOptionSelected: (Track) -> Unit
+    options: Map<String, (Track) -> Unit>,
+//    onOptionSelected: (Track) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(
@@ -208,10 +203,11 @@ fun TrackOptionMenu(
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {
-                        Text(text = option)
+                        Text(text = option.key)
                     },
                     onClick = {
-                        onOptionSelected.invoke(track)
+                        option.value.invoke(track)// as? Function<Unit>
+//                        onOptionSelected.invoke(track)
                         expanded = false
                     }
                 )

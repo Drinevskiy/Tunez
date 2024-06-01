@@ -10,6 +10,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.adamratzman.spotify.models.SpotifyImage
+import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.NavBarItems
 import com.example.tunez.activities.Routes
 import com.example.tunez.content.Playlist
@@ -32,22 +33,31 @@ class NavControllerViewModel: ViewModel()  {
 
     }
 
-    fun goToProfile(){
+    fun goBack(){
         Log.i("NavVM", navUiState.value.controller.toString())
-        navUiState.value.controller?.navigate(Routes.Profile.route){
-//            popUpTo(NavBarItems.BarItems[4].route)
+        navUiState.value.controller?.popBackStack()
+//        navUiState.value.controller?.navigate(Routes.Profile.route) {
+//            launchSingleTop = true
 //            restoreState = false
-        }
+//        }
     }
     fun goToPlaylist(playlist: Playlist){
         Log.i("NavVM", navUiState.value.controller.toString())
         val playlistSerialized = Gson().toJson(playlist.name)
         Log.i("NavVM", playlistSerialized)
-        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${playlist.image}&tracks=${playlist.tracks.joinToString(",")}"){
+        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${playlist.image}&tracks=${playlist.tracks.joinToString(",")}&id=${playlist.id}"){
 //        navUiState.value.controller?.navigate(Routes.Playlist.route + "/$playlistSerialized"){
 //            popUpTo(NavBarItems.BarItems[4].route)
 //            restoreState = false
         }
+    }
+    fun goToAddPlaylist(){
+        navUiState.value.controller?.navigate(Routes.AddPlaylist.route)
+    }
+
+    fun goToChoosePlaylist(track: Track){
+//        val trackSer = Gson().toJson(track)
+        navUiState.value.controller?.navigate(Routes.ChoosePlaylist.route + "?uri=${track.uri.uri}")
     }
 }
 

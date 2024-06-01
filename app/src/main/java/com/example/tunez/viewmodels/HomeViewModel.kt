@@ -2,6 +2,7 @@ package com.example.tunez.viewmodels
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
     fun handleMetadata(data: SpotifyMetadataChangedData){
         viewModelScope.launch {
             val track = spotifyService.playableUriToTrack(data.playableUri)
+            Log.i("SpotifyService", "Handle Metadata " + data.trackName)
             updateUiState(homeUiState.value.copy(
                 image = track?.album?.images?.get(0),
                 name = data.trackName,
@@ -66,7 +68,18 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
 
     fun handlePlaybackState(data: SpotifyPlaybackStateChangedData){
         val position = data.positionInMs.toFloat() / 1000f
+        Log.i("SpotifyService", "Handle playback state " + data.playing.toString())
         updateUiState(homeUiState.value.copy(isPlaying = data.playing, position = position))
+    }
+
+    fun checkPlayback(){
+        viewModelScope.launch {
+            val devices = spotifyService.getDevices()
+            if (devices.isNullOrEmpty()) {
+                Log.i("SpotifyService", "Reset playback")
+                updateUiState(homeUiState.value.copy(isPlaying = false, position = 0f))
+            }
+        }
     }
 
     fun resume(){
@@ -103,21 +116,29 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
     fun updateProgress(){
         if(spotifyService != null) {
             viewModelScope.launch {
-                val position = spotifyService.getCurrentProgress()?.div(1000f)
-                updateUiState(homeUiState.value.copy(position = position!!))
+                var position = 0f
+                try {
+                    val progress = spotifyService.getCurrentProgress()//?.div(1000f)!!
+                    Log.i("SpotifyService", progress.toString())
+                    position = progress?.div(1000f)!!
+                }
+                catch (ex: NullPointerException){
+                    Log.e("SpotifyService", "Error getting current progress")
+                }
+                updateUiState(homeUiState.value.copy(position = position))
             }
         }
     }
 
     fun getDevices(){
 //        viewModelScope.launch {
-            spotifyService.getDevices()
+//            spotifyService.getDevices()
 //        }
     }
 }
 
 data class HomeUiState(
-    var image: SpotifyImage? = SpotifyImage(url=""),
+    var image: SpotifyImage? = null,//SpotifyImage(url=""),
     val name: String? = "",
     val authors: List<String?>? = listOf<String>(),
     val isPlaying: Boolean = false,

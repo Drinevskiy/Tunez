@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.example.tunez.R
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.LoginActivity
 import com.example.tunez.activities.NavBarItems
@@ -63,6 +67,7 @@ import com.google.firebase.auth.auth
 import com.google.gson.Gson
 import com.skydoves.landscapist.glide.GlideImage
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -70,11 +75,7 @@ import org.koin.androidx.compose.inject
 
 
 @Composable
-fun FavouritePlaylist(uiState: ProfileUiState, vm: ProfileViewModel, activity: BaseActivity,  navController: NavController, scope: CoroutineScope){
-//    scope.launch {
-//        vm.loadFavouriteImage()
-//    }
-    val vmNav: NavControllerViewModel by inject()
+fun FavouritePlaylist(uiState: ProfileUiState, vmController: NavControllerViewModel){
     Box(contentAlignment = Alignment.TopCenter,
         modifier = Modifier.fillMaxSize()) {
         Log.i("ProfileViewModel", uiState.favouritePlaylist.image.toString())
@@ -89,61 +90,74 @@ fun FavouritePlaylist(uiState: ProfileUiState, vm: ProfileViewModel, activity: B
                 .clip(RoundedCornerShape(8.dp))
                 .border(2.dp, Color.Black, RoundedCornerShape(8.dp))
                 .clickable {
-                    vmNav.goToPlaylist(uiState.favouritePlaylist)
-//                    val intent = Intent(activity, PlaylistActivity::class.java)
-//                    intent.putStringArrayListExtra("tracksUri", ArrayList(uiState.favouritePlaylist.tracks))
-//                    intent.putExtra("playlistSerialized", Gson().toJson(uiState.favouritePlaylist))
-//                    activity.startActivity(intent)
+                    vmController.goToPlaylist(uiState.favouritePlaylist)
                 },
         )
     }
 }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PlaylistGrid(uiState: ProfileUiState){
+fun PlaylistGrid(uiState: ProfileUiState, vmController: NavControllerViewModel){
     FlowRow(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         maxItemsInEachRow = 2,
         modifier = Modifier.padding(bottom = 20.dp)
     ){
-        if(uiState.favouritePlaylist.tracks != null) {
-            uiState.favouritePlaylist.tracks.forEach {
-                GlideImage(
-                    imageModel =
-
+        Log.i("ProfileScreen", uiState.playlists.toString())
+        uiState.playlists.forEach {
+            GlideImage(
+                imageModel = it.image ?:
 //                    it.album.images?.get(0)?.url ?:
-                    "https://sun9-25.userapi.com/impg/Z3epnPuW1AG9bY8vNk6CxvPUfDC8Glje-nfRVA/tHFcX2ef9rk.jpg?size=900x900&quality=96&sign=27b00a943c3ac22fbaa34b00db97bea8&c_uniq_tag=DeuKuphk22jYBIyArxc3iAF8-bHFXuRzK_HtgZbSCrM&type=album",
-                    contentDescription = null,
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier
-                        .fillMaxWidth(0.47f)
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(2.dp, Color.Black, RoundedCornerShape(8.dp))
-                        .clickable {
+                "https://sun9-25.userapi.com/impg/Z3epnPuW1AG9bY8vNk6CxvPUfDC8Glje-nfRVA/tHFcX2ef9rk.jpg?size=900x900&quality=96&sign=27b00a943c3ac22fbaa34b00db97bea8&c_uniq_tag=DeuKuphk22jYBIyArxc3iAF8-bHFXuRzK_HtgZbSCrM&type=album",
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxWidth(0.47f)
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(2.dp, Color.Black, RoundedCornerShape(8.dp))
+                    .clickable {
+                        vmController.goToPlaylist(it)
+                    },
+                )
 
-                        },
-                    )
-
-            }
+        }
+        Box(modifier = Modifier
+            .fillMaxWidth(0.47f)
+            .height(200.dp),
+            contentAlignment = Alignment.Center
+        ){
+            Image(
+                painter = painterResource(id = R.drawable.plus),
+                contentDescription = null,
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(120.dp)
+                    .clickable {
+                        vmController.goToAddPlaylist()
+                    },
+            )
         }
     }
 }
 
 @Composable
-fun ProfileScreen(activity: BaseActivity, navController: NavController, modifier: Modifier = Modifier, vm: ProfileViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
-    val uiState by vm.profileUiState.collectAsState()
+fun ProfileScreen(activity: BaseActivity, navController: NavController, modifier: Modifier = Modifier, ){
+    val vmNav: NavControllerViewModel by inject()
     val scope = rememberCoroutineScope()
     var shouldLaunchLoginActivity by remember { mutableStateOf(user == null) }
-
     if (shouldLaunchLoginActivity) {
         LaunchedEffect(shouldLaunchLoginActivity) {
             activity.startActivity(Intent(activity, LoginActivity::class.java))
         }
     } else {
+        val vm: ProfileViewModel by inject()
+        val uiState by vm.profileUiState.collectAsState()
         vm.getAllInfo()
         vm.getFavouriteTracks()
+//        vm.getPlaylists()
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -219,34 +233,42 @@ fun ProfileScreen(activity: BaseActivity, navController: NavController, modifier
                         ),
                         modifier = Modifier.padding(bottom = 20.dp)
                     )
+                    Text(
+                        text = "Favourite tracks",
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 19.sp,
+                        modifier = Modifier
+                            .padding(bottom = 20.dp)
+                            .fillMaxWidth()
+                    )
                     if (uiState.favouritePlaylist.tracks.isNotEmpty()) {
-                        Text(
-                            text = "Favourite tracks",
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            modifier = Modifier
-                                .padding(bottom = 20.dp)
-                                .fillMaxWidth()
-                        )
 //                        vm.loadFavouriteImage()
-                        FavouritePlaylist(uiState, vm, activity, navController, scope)
+                        FavouritePlaylist(uiState, vmNav)
                     }
+                    else{
                         Text(
-                            text = "Playlists",
+                            text = "You don't have any favourite tracks",
                             textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp,
                             modifier = Modifier
                                 .padding(top = 10.dp, bottom = 20.dp)
                                 .fillMaxWidth()
                         )
-//                    }
-                    if (uiState.favouritePlaylist.tracks.isNotEmpty()) {
-                        PlaylistGrid(uiState)
                     }
-//                }
-
+                    Text(
+                        text = "Playlists",
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 19.sp,
+                        modifier = Modifier
+                            .padding(top = 10.dp, bottom = 20.dp)
+                            .fillMaxWidth()
+                    )
+//                    if(uiState.playlists.isNotEmpty()) {
+                        PlaylistGrid(uiState, vmNav)
+//                    }
             }
 //        vm.getAllUsers()
         }

@@ -1,38 +1,24 @@
 package com.example.tunez.screens
 
-import android.app.Activity
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,35 +37,33 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.adamratzman.spotify.SpotifyException
-import com.adamratzman.spotify.models.ContextUri
-import com.adamratzman.spotify.models.PlayableUri
 import com.example.tunez.R
-import com.example.tunez.activities.ActionHomeActivity
-import com.example.tunez.activities.BaseActivity
-import com.example.tunez.activities.MainActivity
-import com.example.tunez.auth.guardValidSpotifyApi
-import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.HomeUiState
 import com.example.tunez.viewmodels.HomeViewModel
-import com.example.tunez.viewmodels.SearchViewModel
 import com.skydoves.landscapist.glide.GlideImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import org.koin.androidx.compose.inject
+
+//var is_loading =true
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, vm: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
+//    val vm: HomeViewModel by inject()
     val uiState by vm.homeUiState.collectAsState()
     val scope = rememberCoroutineScope()
     // Задержка для для получения токена
     LaunchedEffect(Unit) {
-        vm.getDevices()
-        delay(2000)
+//        vm.getDevices()
+//        delay(2000)
+        vm.updateProgress()
+        vm.checkPlayback()
     }
+
+
     Column(modifier = Modifier.padding(20.dp)) {
         GlideImage(
             imageModel =
@@ -165,15 +149,31 @@ fun MusicProgressBar(
 //    var is_loading by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableStateOf(uiState.position) }
 
+    val scope = rememberCoroutineScope()
     LaunchedEffect(key1 = uiState.position, key2 = uiState.isPlaying) {
         currentPosition = uiState.position
-//        if(is_loading){
-//            delay(2500)
-//            is_loading = false
-//        }
-        delay(200)
-        vm.updateProgress()
+        while (true) {
+            delay(1000)
+            if (uiState.isPlaying) {
+                withContext(Dispatchers.Main) {
+                    currentPosition += 1
+                }
+            }
+        }
+////        vm.updateProgress()
     }
+//    LaunchedEffect(key1 = uiState.position, key2 = uiState.isPlaying) {
+//        currentPosition = uiState.position
+////        if(is_loading){
+////            delay(2500)
+////            is_loading = false
+////        }
+//        delay(200)
+////        if(uiState.isPlaying){
+////            currentPosition += 1
+////        }
+//        vm.updateProgress()
+//    }
     Box(
         modifier = Modifier
             .fillMaxWidth(),

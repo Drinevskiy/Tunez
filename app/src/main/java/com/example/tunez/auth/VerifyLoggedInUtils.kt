@@ -1,11 +1,13 @@
 package com.example.tunez.auth
 
 import android.app.Activity
+import android.util.Log
 import com.adamratzman.spotify.SpotifyClientApi
 import com.adamratzman.spotify.SpotifyException
 import com.adamratzman.spotify.auth.SpotifyDefaultCredentialStore
 import com.adamratzman.spotify.auth.implicit.startSpotifyImplicitLoginActivity
 import com.adamratzman.spotify.auth.pkce.startSpotifyClientPkceLoginActivity
+import com.example.tunez.SpotifyPlaygroundApplication.Companion.context
 import com.example.tunez.data.Model
 import kotlinx.coroutines.runBlocking
 
@@ -14,6 +16,7 @@ fun <T> Activity.guardValidSpotifyApi(
     alreadyTriedToReauthenticate: Boolean = false,
     block: suspend (api: SpotifyClientApi) -> T
 ): T? {
+    Log.i("VerifyUtils", "Context: " + this)
     return runBlocking {
         try {
             val token = Model.credentialStore.spotifyToken
@@ -56,7 +59,10 @@ fun <T> Activity.guardValidSpotifyApi(
                 }
             } else {
                 SpotifyDefaultCredentialStore.activityBackOnImplicitAuth = classBackTo
+                Log.i("VerifyUtils", "Context: " + context.toString())
                 startSpotifyImplicitLoginActivity(SpotifyImplicitLoginActivityImpl::class.java)
+                Log.i("VerifyUtils", "Context 2: " + context.toString())
+
                 null
             }
         }

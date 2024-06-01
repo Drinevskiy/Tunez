@@ -1,18 +1,12 @@
 package com.example.tunez.auth
 
 import android.content.Intent
-import android.widget.ActionMenuView
-import androidx.compose.ui.platform.LocalContext
 import com.adamratzman.spotify.SpotifyImplicitGrantApi
 import com.adamratzman.spotify.SpotifyScope
-import com.adamratzman.spotify.auth.implicit.AbstractSpotifyAppCompatImplicitLoginActivity
 import com.adamratzman.spotify.auth.implicit.AbstractSpotifyAppImplicitLoginActivity
 import com.example.tunez.BuildConfig
 import com.example.tunez.SpotifyPlaygroundApplication
-import com.example.tunez.activities.ActionHomeActivity
-import com.example.tunez.activities.LoginActivity
 import com.example.tunez.activities.MainActivity
-import com.example.tunez.activities.StartActivity
 import com.example.tunez.utils.toast
 
 class SpotifyImplicitLoginActivityImpl : AbstractSpotifyAppImplicitLoginActivity() {

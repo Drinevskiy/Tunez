@@ -24,9 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.RecommendationUiState
 import com.example.tunez.viewmodels.RecommendationsViewModel
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.inject
 
 @Composable
 fun RecommendationsScreen(modifier: Modifier = Modifier, vm: RecommendationsViewModel = viewModel(factory = AppViewModelProvider.Factory)) {
@@ -59,6 +61,7 @@ fun RecommendationsScreen(modifier: Modifier = Modifier, vm: RecommendationsView
 
 @Composable
 fun TracksList(uiState: RecommendationUiState, vm: RecommendationsViewModel, modifier: Modifier = Modifier){
+    val vmNav: NavControllerViewModel by inject()
     LazyVerticalGrid(
         columns = GridCells.Fixed(1),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -67,7 +70,7 @@ fun TracksList(uiState: RecommendationUiState, vm: RecommendationsViewModel, mod
     ){
         if(uiState.recommendations != null) {
             items(uiState.recommendations!!) {
-                TrackRow(it, vm::play){vm.addToFavouriteTracks(it)}
+                TrackRow(it, vm::play, vm::addToFavouriteTracks, vmNav::goToChoosePlaylist)
             }
         }
     }
