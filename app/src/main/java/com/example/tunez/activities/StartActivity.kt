@@ -7,7 +7,10 @@ import androidx.appcompat.app.AppCompatActivity
 import com.adamratzman.spotify.auth.implicit.startSpotifyImplicitLoginActivity
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.auth.SpotifyImplicitLoginActivityImpl
-
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 class StartActivity: AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -33,16 +33,20 @@ import com.adamratzman.spotify.models.Track
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.content.Playlist
 import com.example.tunez.screens.AddPlaylistScreen
+import com.example.tunez.screens.AddTrackScreen
 import com.example.tunez.screens.ChoosePlaylistScreen
 import com.example.tunez.screens.HomeScreen
 import com.example.tunez.screens.PlaylistScreen
+import com.example.tunez.screens.ProfileInfoScreen
 import com.example.tunez.screens.ProfileScreen
 import com.example.tunez.screens.RecommendationsScreen
 import com.example.tunez.screens.ReleasesScreen
 import com.example.tunez.screens.SearchScreen
+import com.example.tunez.screens.UserPlaylistScreen
 import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.viewmodels.NavControllerViewModel
+import com.example.tunez.viewmodels.UserInfo
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
@@ -115,7 +119,7 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
             }
 
             composable(Routes.Profile.route) {
-                ProfileScreen(activity, navController)
+                ProfileScreen(activity)
             }
             composable(Routes.Playlist.route + "?name={name}&durationInMs={durationInMs}&image={image}&tracks={tracks}&id={id}",
                 arguments = listOf(
@@ -134,7 +138,6 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
                 }
                 val tracksSerialized = it.arguments?.getString("tracks")
                 val tracks = Json.decodeFromString<List<Track>>(tracksSerialized!!)
-//                val tracks = it.arguments?.getString("tracks")?.split(",") ?: emptyList()
                 val id = it.arguments?.getString("id")
                 val playlist = Playlist(
                     durationInMs = durationInMs,
@@ -143,7 +146,7 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
                     image = image,
                     id = id
                 )
-                PlaylistScreen(playlist = playlist, spotifyService = spotifyService)
+                PlaylistScreen(playlist = playlist)
             }
             composable(Routes.AddPlaylist.route) {
                 AddPlaylistScreen()
@@ -155,6 +158,50 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
             ) {
                 val uri = it.arguments?.getString("uri") ?: ""
                 ChoosePlaylistScreen(uri)
+            }
+            composable(Routes.ProfileInfo.route + "?username={username}&email={email}&role={role}&uid={uid}",
+                arguments = listOf(
+                    navArgument("username") { type = NavType.StringType },
+                    navArgument("email") { type = NavType.StringType },
+                    navArgument("role") { type = NavType.StringType },
+                    navArgument("uid") { type = NavType.StringType }
+                )) {
+                val username = it.arguments?.getString("username") ?: "No name"
+                val email = it.arguments?.getString("email") ?: "No name"
+                val role = it.arguments?.getString("role") ?: "No name"
+                val uid = it.arguments?.getString("uid") ?: "No name"
+                val userInfo = UserInfo(uid, username, email, role)
+                ProfileInfoScreen(userInfo = userInfo)
+            }
+            composable(Routes.UserPlaylist.route + "?name={name}&durationInMs={durationInMs}&image={image}&tracks={tracks}&id={id}",
+                arguments = listOf(
+                    navArgument("name") { type = NavType.StringType },
+                    navArgument("durationInMs") { type = NavType.IntType },
+                    navArgument("image") { type = NavType.StringType },
+                    navArgument("tracks") { type = NavType.StringType },
+                    navArgument("id") { type = NavType.StringType }
+                )
+            ){
+                val name = it.arguments?.getString("name") ?: "No name"
+                val durationInMs = it.arguments?.getInt("durationInMs") ?: 0
+                var image: String? = null
+                if(it.arguments?.getString("image") != "nullable") {
+                    image = it.arguments?.getString("image")
+                }
+                val tracksSerialized = it.arguments?.getString("tracks")
+                val tracks = Json.decodeFromString<List<Track>>(tracksSerialized!!)
+                val id = it.arguments?.getString("id")
+                val playlist = Playlist(
+                    durationInMs = durationInMs,
+                    name = name,
+                    tracks = tracks,
+                    image = image,
+                    id = id
+                )
+                UserPlaylistScreen(playlist = playlist)
+            }
+            composable(Routes.AddTrack.route) {
+                AddTrackScreen()
             }
         }
         BottomNavigationBar(navController)
@@ -236,4 +283,8 @@ sealed class Routes(val route: String) {
     object Playlist : Routes("playlist")
     object AddPlaylist : Routes("add-playlist")
     object ChoosePlaylist : Routes("choose-playlist")
+    object UserPlaylist : Routes("user-playlist")
+    object ProfileInfo : Routes("profile-info")
+    object AddTrack : Routes("add-track")
+
 }

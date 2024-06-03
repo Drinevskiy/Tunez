@@ -1,7 +1,6 @@
 package com.example.tunez.screens
 
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,22 +48,20 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.Track
 import com.example.tunez.content.Playlist
 import com.example.tunez.ui.service.SpotifyService
-import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ProfileUiState
 import com.example.tunez.viewmodels.ProfileViewModel
 import com.skydoves.landscapist.glide.GlideImage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.inject
-import kotlin.reflect.KSuspendFunction1
+import kotlin.reflect.KFunction1
 
 @Composable
-fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService) {
+fun PlaylistScreen(playlist: Playlist) {
     val scope = rememberCoroutineScope()
     var tracks: List<Track?> by remember { mutableStateOf(playlist.tracks) }
     var durationText by remember { mutableStateOf(millisecondsToHoursAndMinutes (playlist.durationInMs)) }
@@ -136,19 +132,19 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService) {
             modifier = Modifier.fillMaxWidth()
         ){
             items(tracks) {track ->
-                TrackRow(track!!, spotifyService::playTrack) {
+                TrackRow(track!!, vm::play) {
                     scope.launch {
-                        Log.i("PlaylistScreen", "Remove from playlist $playlist $track")
+//                        Log.i("PlaylistScreen", "Remove from playlist $playlist $track")
                         if(playlist.id != "favourite"){
                             vm.removeTrackFromPlaylist(track, playlist)
-                            Log.i("PlaylistScreen", "Remove from playlist $playlist $track")
+//                            Log.i("PlaylistScreen", "Remove from playlist $playlist $track")
                         }
                         else {
                             vm.removeFromFavouriteTracks(track)
                         }
-                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
+//                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
                         playlist.durationInMs -= track.length
-                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
+//                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
                         durationText = millisecondsToHoursAndMinutes(playlist.durationInMs)
                         tracks = tracks.minus(track)
                         vm.makeToast("${track.name} deleted from ${playlist.name}")
@@ -162,7 +158,7 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService) {
 @Composable
 fun TrackRow(
     track: Track,
-    onClick: KSuspendFunction1<PlayableUri, Unit>,
+    onClick: KFunction1<PlayableUri, Unit>,
     onDelete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -284,7 +280,7 @@ fun PlaylistList(
             .fillMaxWidth()
             .height(570.dp)
     ){
-        items(uiState.playlists) {
+        items(uiState.user.playlists) {
             PlaylistRow(it, addToSelectedPlaylists, removeFromSelectedPlaylists)
         }
     }
@@ -423,6 +419,8 @@ fun AddPlaylistScreen(){
         }
     }
 }
+
+
 fun millisecondsToHoursAndMinutes(milliseconds: Int): String {
     val totalSeconds = milliseconds / 1000
     val hours = (totalSeconds / 3600).toInt()

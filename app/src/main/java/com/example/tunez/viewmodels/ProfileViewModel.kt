@@ -3,31 +3,26 @@ package com.example.tunez.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.adamratzman.spotify.models.PlayableUri
 import com.adamratzman.spotify.models.Track
-import com.adamratzman.spotify.models.toPlayableUri
-import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.example.tunez.activities.user
 import com.example.tunez.content.Playlist
-import com.example.tunez.screens.millisecondsToHoursAndMinutes
+import com.example.tunez.roles.IAccount
 import com.example.tunez.ui.service.SpotifyService
-import com.example.tunez.utils.toast
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.lang.NullPointerException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -36,100 +31,85 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
     val profileUiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
-//        getAllInfo()
-        getFavouriteTracks()
-        getPlaylists()
-        Log.i("ProfileViewModel", profileUiState.value.favouritePlaylist.toString())
-
+        getAllInfo()
     }
-    fun updateUiState(uiState: ProfileUiState){
+
+    fun updateUiState(user: IAccount) {
         _uiState.update {
             it.copy(
-                user = uiState.user,
-                uid = uiState.uid,
-                username = uiState.username,
-                role = uiState.role,
-                email = uiState.email,
-                genres = uiState.genres,
-                favouritePlaylist = uiState.favouritePlaylist,
-                playlists = uiState.playlists
+                user = user,
             )
         }
     }
-    fun getAllInfo(){
-        getUid()
-        getRole()
-        getUsername()
-        getEmail()
-        getGenres()
-    }
-    fun getUid(){
-        if(user != null) {
-            val uid = Firebase.database.reference.child("Users").child(profileUiState.value.user!!.uid)
-            updateUiState(profileUiState.value.copy(uid = uid))
+
+    fun updateAllUsers(users: List<UserInfo>) {
+        _uiState.update {
+            it.copy(
+                allUsers = users,
+            )
         }
     }
-    fun getRole(){
-        if(user != null) {
-            profileUiState.value.uid?.child("role")?.get()?.addOnSuccessListener {
-                val role = it.value.toString()
-                updateUiState(profileUiState.value.copy(role = role))
-            }?.addOnFailureListener {
-                Log.e("firebase", "Error getting data", it)
-            }
+
+    private fun updateUserForAdmin(user: IAccount) {
+        _uiState.update {
+            it.copy(
+                currentUserForAdmin = user
+            )
         }
     }
-    fun getUsername(){
-        if(user != null) {
-            profileUiState.value.uid?.child("username")?.get()?.addOnSuccessListener {
-                val username = it.value.toString()
-                updateUiState(profileUiState.value.copy(username = username))
-            }?.addOnFailureListener {
-                Log.e("firebase", "Error getting data", it)
-            }
-        }
-    }
-    fun getEmail(){
-        if(user != null) {
-            profileUiState.value.uid?.child("email")?.get()?.addOnSuccessListener {
-                val email = it.value.toString()
-                updateUiState(profileUiState.value.copy(email = email))
-            }?.addOnFailureListener {
-                Log.e("firebase", "Error getting data", it)
-            }
-        }
-    }
-    fun getGenres(){
-        if(user != null) {
-            profileUiState.value.uid?.child("genres")?.get()?.addOnSuccessListener {
-                val genres = it.value as List<String>
-                updateUiState(profileUiState.value.copy(genres = genres))
-            }?.addOnFailureListener {
-                Log.e("firebase", "Error getting data", it)
-            }
-        }
-    }
-//    suspend fun uriToTrack(uri: String): Track? {
-//        return withContext(viewModelScope.coroutineContext) {
-//            spotifyService.stringUriToTrack(uri)
-//        }
-//    }
-    fun loadFavouriteImage() {
-        viewModelScope.launch {
-            try {
-//                val url = getTrackFromUri(profileUiState.value.favouritePlaylist.tracks.get(0))?.album?.images?.get(0)?.url
-                val url = profileUiState.value.favouritePlaylist.tracks.get(0)?.album?.images?.get(0)?.url
-                updateUiState(profileUiState.value.copy(favouritePlaylist =
-                Playlist(
-                    durationInMs = profileUiState.value.favouritePlaylist.durationInMs,
-                    name = profileUiState.value.favouritePlaylist.name,
-                    tracks = profileUiState.value.favouritePlaylist.tracks,
-                    image = url,
-                    id = "favourite")
-                ))
-            }
-            catch (ex: IndexOutOfBoundsException){
-                Log.e("ProfileViewModel", "Track list is empty")
+
+    fun getAllInfo() {
+        if (user != null) {
+            viewModelScope.launch {
+                val db = Firebase.database.reference.child("Users").child(user!!.uid)
+                val uid = db.key
+                var role = "user"
+                var username: String? = null
+                var email: String? = null
+                var genres: List<String> = listOf()
+                var playlists: List<Playlist> = listOf()
+                db.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(dataSnapshot: DataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            email = dataSnapshot.child("email").value.toString()
+                            role = dataSnapshot.child("role").value.toString()
+                            username = dataSnapshot.child("username").value.toString()
+                            genres = dataSnapshot.child("genres").value as? List<String> ?: emptyList()
+                            updateUiState(
+                                user =
+                                IAccount(
+                                    uid = uid,
+                                    username = username,
+                                    email = email,
+                                    role = role,
+                                    genres = genres,
+                                    favouritePlaylist = profileUiState.value.user.favouritePlaylist,
+                                    playlists = profileUiState.value.user.playlists
+                                )
+                            )
+                            getPlaylists()
+                            getFavouriteTracks()
+                            if(profileUiState.value.user.role == "admin"){
+                                Firebase.database.reference.child("Users").get().addOnCompleteListener { dataSnapshot2 ->
+                                    var allUsers = listOf<UserInfo>()
+                                    for(children in dataSnapshot2.result.children){
+                                        val uid2 = children.key
+                                        val email2 = children.child("email").value.toString()
+                                        val role2 = children.child("role").value.toString()
+                                        val username2 = children.child("username").value.toString()
+                                        val item = UserInfo(uid2, username2, email2, role2)
+                                        allUsers = allUsers.plus(item)
+                                    }
+                                    updateAllUsers(allUsers)
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(databaseError: DatabaseError) {
+                        Log.e("firebase", "Error gettin profile info")
+                    }
+                })
             }
         }
     }
@@ -139,7 +119,8 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             spotifyService.stringUriToTrack(uri)
         }
     }
-    fun getFavouriteTracks(){
+
+    fun getFavouriteTracks() {
         var favTracks = listOf<String>()
         var duration = 0
         val name = "Favourite Tracks"
@@ -148,58 +129,62 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 if (user != null) {
                     val db = Firebase.database.reference
                     val playlist = db.child("Users")
-                        .child(user!!.uid)
+                        .child(profileUiState.value.user.uid!!)
                         .child("favouritePlaylist")
                     playlist.get().addOnCompleteListener {
                         Log.i("firebase", "success getting playlist")
-                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
+                        favTracks =
+                            it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
                         duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
                         Log.i("firebase", favTracks.toString())
 //                        if(favTracks.isNotEmpty()) {
-                            playlist.setValue(
-                                mapOf(
-                                    "favouriteTracks" to favTracks,
-                                    "name" to name,
-                                    "duration" to duration
-                                )
+                        playlist.setValue(
+                            mapOf(
+                                "favouriteTracks" to favTracks,
+                                "name" to name,
+                                "duration" to duration
                             )
+                        )
 //                        }
                         viewModelScope.launch {
                             val tracks = spotifyService.stringUrisToTracks(favTracks)
-//                            val tracks = favTracks.map { spotifyService.stringUriToTrack(it) }
                             var image: String? = null
                             supervisorScope {
-                                if(favTracks.isNotEmpty()){
+                                if (favTracks.isNotEmpty()) {
                                     image = loadImage(favTracks[0])
                                 }
                                 Log.i("firebase", image.toString())
                             }
-//                            loadFavouriteImage()
                             updateUiState(
-                                profileUiState.value.copy(
-                                    favouritePlaylist =
-                                    Playlist(
+                                user =
+                                IAccount(
+                                    uid = profileUiState.value.user.uid,
+                                    username = profileUiState.value.user.username,
+                                    email = profileUiState.value.user.email,
+                                    role = profileUiState.value.user.role,
+                                    genres = profileUiState.value.user.genres,
+                                    favouritePlaylist = Playlist(
                                         durationInMs = duration,
                                         name = name,
                                         tracks = tracks,
                                         image = image,
-//                                        image = profileUiState.value.favouritePlaylist.image,
                                         id = "favourite"
-                                    )
+                                    ),
+                                    playlists = profileUiState.value.user.playlists
                                 )
                             )
                         }
                     }
-
-                    .addOnFailureListener {
-                        Log.e("firebase", "error getting playlist")
-                    }
-            }
+                        .addOnFailureListener {
+                            Log.e("firebase", "error getting playlist")
+                        }
+                }
             } catch (ex: Exception) {
                 Log.e("firebase", "Error getting/setting data", ex)
             }
         }
     }
+
 
     fun addToFavouriteTracks(track: Track){
         var favTracks = listOf<String>()
@@ -209,7 +194,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 try {
                     val db = Firebase.database.reference
                     val playlist = db.child("Users")
-                        .child(Firebase.auth.currentUser!!.uid)
+                        .child(profileUiState.value.user.uid!!)
                         .child("favouritePlaylist")
                     playlist.get().addOnCompleteListener {
                         Log.i("firebase", "success getting playlist")
@@ -219,9 +204,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         viewModelScope.launch {
                             if (track.uri.uri !in favTracks) {
                                 favTracks = favTracks.plus(track.uri.uri)
-//                                supervisorScope {
                                 duration += spotifyService.stringUriToTrack(track.uri.uri).length
-//                                }
                             }
                             playlist.setValue(
                                 mapOf(
@@ -230,7 +213,6 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                     "duration" to duration
                                 )
                             )
-//                            val tracks = favTracks.map { spotifyService.stringUriToTrack(it) }
                             val tracks = spotifyService.stringUrisToTracks(favTracks)
                             var image: String? = null
                             if (tracks.isNotEmpty()) {
@@ -238,24 +220,29 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                     image = loadImage(favTracks[0])
                                 }
                             }
-                            updateUiState(
-                                profileUiState.value.copy(
-                                    favouritePlaylist =
-                                    Playlist(
+                            updateUiState(user =
+                                IAccount(
+                                    uid = profileUiState.value.user.uid,
+                                    username = profileUiState.value.user.username,
+                                    email = profileUiState.value.user.email,
+                                    role = profileUiState.value.user.role,
+                                    genres = profileUiState.value.user.genres,
+                                    favouritePlaylist = Playlist(
                                         durationInMs = duration,
-                                        name = profileUiState.value.favouritePlaylist.name,
+                                        name = profileUiState.value.user.favouritePlaylist.name,
                                         tracks = tracks,
                                         image = image,
                                         id = "favourite"
-                                    )
+                                    ),
+                                    playlists = profileUiState.value.user.playlists
                                 )
                             )
                             makeToast("Track added to Favourite Tracks")
                         }
                     }
-                        .addOnFailureListener {
-                            Log.e("firebase", "error getting playlist")
-                        }
+                    .addOnFailureListener {
+                        Log.e("firebase", "error getting playlist")
+                    }
                 } catch (ex: Exception) {
                     Log.e("firebase", "Error getting/setting data", ex)
                 }
@@ -284,7 +271,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                     playlistNode.setValue(
                         mapOf(
                             "favouriteTracks" to favTracks,
-                            "name" to profileUiState.value.favouritePlaylist.name,
+                            "name" to profileUiState.value.user.favouritePlaylist.name,
                             "duration" to duration
                         )
                     ).addOnCompleteListener {
@@ -298,16 +285,21 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                 image = loadImage(favTracks[0])
                             }
                         }
-                        updateUiState(
-                            profileUiState.value.copy(
-                                favouritePlaylist =
-                                Playlist(
+                        updateUiState(user =
+                            IAccount(
+                                uid = profileUiState.value.user.uid,
+                                username = profileUiState.value.user.username,
+                                email = profileUiState.value.user.email,
+                                role = profileUiState.value.user.role,
+                                genres = profileUiState.value.user.genres,
+                                favouritePlaylist = Playlist(
                                     durationInMs = duration,
-                                    name = profileUiState.value.favouritePlaylist.name,
+                                    name = profileUiState.value.user.favouritePlaylist.name,
                                     tracks = tracks,
                                     image = image,
                                     id = "favourite"
-                                )
+                                ),
+                                playlists = profileUiState.value.user.playlists
                             )
                         )
                     }
@@ -331,46 +323,71 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             imageUrl
         }
     }
+
     fun getPlaylists(){
         viewModelScope.launch {
-            if(user != null){
+            if (user != null) {
                 val db = Firebase.database.reference
                 var playlists = listOf<Playlist>()
                 val playlistsSnapshot = db.child("Users")
-                    .child(user!!.uid)
+                    .child(profileUiState.value.user.uid!!)
                     .child("playlists")
                 playlistsSnapshot.get().addOnCompleteListener {
-                    for (children in it.result.children) {
-                        val playlist = children.value as? Map<String, Any> ?: mapOf()
-                        val duration = playlist["duration"].toString().toIntOrNull() ?: 0
-                        val name = playlist["name"]?.toString() ?: "No name"
-                        val tracksDb = playlist["tracks"] as? List<String> ?: listOf()
-                        val id = children.key.toString()
-                        var image: String? = null
-                        viewModelScope.launch {
-                            if (tracksDb.isNotEmpty()) {
-                                supervisorScope {
-                                    image = loadImage(tracksDb[0])
-                                    Log.i("firebase", image.toString())
+                    if(it.isSuccessful) {
+                        if (it.result.hasChildren()) {
+                            for (children in it.result.children) {
+                                val playlist = children.value as? Map<String, Any> ?: mapOf()
+                                val duration = playlist["duration"].toString().toIntOrNull() ?: 0
+                                val name = playlist["name"]?.toString() ?: "No name"
+                                val tracksDb = playlist["tracks"] as? List<String> ?: listOf()
+                                val id = children.key.toString()
+                                var image: String? = null
+                                viewModelScope.launch {
+                                    if (tracksDb.isNotEmpty()) {
+                                        supervisorScope {
+                                            image = loadImage(tracksDb[0])
+                                            Log.i("firebase", image.toString())
+                                        }
+                                    }
+                                    var tracks: List<Track?> = listOf()
+                                    if (tracksDb.isNotEmpty()) {
+                                        tracks = spotifyService.stringUrisToTracks(tracksDb)
+                                    }
+                                    playlists = playlists.plus(
+                                        Playlist(
+                                            durationInMs = duration,
+                                            name = name,
+                                            tracks = tracks,
+                                            image = image,
+                                            id = id
+                                        )
+                                    )
+                                    Log.i("ProfileViewModel", profileUiState.value.user.username!!)
+                                    updateUiState(
+                                        user =
+                                        IAccount(
+                                            uid = profileUiState.value.user.uid,
+                                            username = profileUiState.value.user.username,
+                                            email = profileUiState.value.user.email,
+                                            role = profileUiState.value.user.role,
+                                            genres = profileUiState.value.user.genres,
+                                            favouritePlaylist = profileUiState.value.user.favouritePlaylist,
+                                            playlists = playlists
+                                        )
+                                    )
                                 }
                             }
-//                            val tracks = tracksDb.map { spotifyService.stringUriToTrack(it) }
-                            var tracks: List<Track?> = listOf()
-                            if(tracksDb.isNotEmpty()){
-                                tracks = spotifyService.stringUrisToTracks(tracksDb)
-                            }
-                            playlists = playlists.plus(
-                                Playlist(
-                                    durationInMs = duration,
-                                    name = name,
-                                    tracks = tracks,
-                                    image = image,
-                                    id = id
-                                )
-                            )
+                        } else {
                             updateUiState(
-                                profileUiState.value.copy(
-                                    playlists = playlists
+                                user =
+                                IAccount(
+                                    uid = profileUiState.value.user.uid,
+                                    username = profileUiState.value.user.username,
+                                    email = profileUiState.value.user.email,
+                                    role = profileUiState.value.user.role,
+                                    genres = profileUiState.value.user.genres,
+                                    favouritePlaylist = Playlist(),
+                                    playlists = listOf()
                                 )
                             )
                         }
@@ -379,13 +396,14 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             }
         }
     }
+
     fun addPlaylist(name: String){
         viewModelScope.launch {
             val db = Firebase.database.reference
             val tracks = listOf<String>()
             val duration = 0
             val id = db.child("Users")
-                .child(user!!.uid)
+                .child(profileUiState.value.user.uid!!)
                 .child("playlists")
                 .push()
             id.setValue(
@@ -400,9 +418,15 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 name = name,
                 id = id.key
             )
-            updateUiState(
-                profileUiState.value.copy(
-                    playlists = profileUiState.value.playlists.plus(playlist)
+            updateUiState(user =
+                IAccount(
+                    uid = profileUiState.value.user.uid,
+                    username = profileUiState.value.user.username,
+                    email = profileUiState.value.user.email,
+                    genres = profileUiState.value.user.genres,
+                    role = profileUiState.value.user.role,
+                    favouritePlaylist = profileUiState.value.user.favouritePlaylist,
+                    playlists = profileUiState.value.user.playlists.plus(playlist)
                 )
             )
         }
@@ -415,7 +439,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             if (user != null) {
                 val db = Firebase.database.reference
                 val playlistSnapshot = db.child("Users")
-                    .child(user!!.uid)
+                    .child(profileUiState.value.user.uid!!)
                     .child("playlists")
                     .child(playlist.id!!)
                 playlistSnapshot.get().addOnCompleteListener {
@@ -435,8 +459,8 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                 "duration" to duration,
                             )
                         )
-                        val index = profileUiState.value.playlists.indexOf(profileUiState.value.playlists.filter { pl -> pl.id == playlist.id }[0])
-                        val tempList = profileUiState.value.playlists.toMutableList()
+                        val index = profileUiState.value.user.playlists.indexOf(profileUiState.value.user.playlists.filter { pl -> pl.id == playlist.id }[0])
+                        val tempList = profileUiState.value.user.playlists.toMutableList()
                         Log.i("ProfileViewModel", "First: $playlist")
                         supervisorScope {
                             playlist.image = loadImage(tracks[0])
@@ -446,8 +470,14 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         }
                         tempList[index] = playlist
                         Log.i("ProfileViewModel", "Third $playlist")
-                        updateUiState(
-                            profileUiState.value.copy(
+                        updateUiState(user =
+                            IAccount(
+                                uid = profileUiState.value.user.uid,
+                                username = profileUiState.value.user.username,
+                                email = profileUiState.value.user.email,
+                                role = profileUiState.value.user.role,
+                                genres = profileUiState.value.user.genres,
+                                favouritePlaylist = profileUiState.value.user.favouritePlaylist,
                                 playlists = tempList.toList()
                             )
                         )
@@ -468,7 +498,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         var duration = 0
         if(user != null) {
             val playlistNode = db.child("Users")
-                .child(user!!.uid)
+                .child(profileUiState.value.user.uid!!)
                 .child("playlists")
                 .child(playlist.id!!)
             // Для обновления uiState после выполнения удаления из бд
@@ -494,8 +524,8 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                             it.exception ?: RuntimeException("Unknown error")
                         )
                     }
-                    val index = profileUiState.value.playlists.indexOf(profileUiState.value.playlists.filter { pl -> pl.id == playlist.id }[0])
-                    val tempList = profileUiState.value.playlists.toMutableList()
+                    val index = profileUiState.value.user.playlists.indexOf(profileUiState.value.user.playlists.filter { pl -> pl.id == playlist.id }[0])
+                    val tempList = profileUiState.value.user.playlists.toMutableList()
                     viewModelScope.launch {
                         supervisorScope {
                             playlist.image = null
@@ -509,9 +539,15 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         if(index > -1) {
                             tempList[index] = playlist
                         }
-                        updateUiState(
-                            profileUiState.value.copy(
-                                playlists = tempList
+                        updateUiState(user =
+                            IAccount(
+                                uid = profileUiState.value.user.uid,
+                                username = profileUiState.value.user.username,
+                                email = profileUiState.value.user.email,
+                                role = profileUiState.value.user.role,
+                                genres = profileUiState.value.user.genres,
+                                favouritePlaylist = profileUiState.value.user.favouritePlaylist,
+                                playlists = tempList.toList()
                             )
                         )
                     }
@@ -523,55 +559,287 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         viewModelScope.launch {
             val db = Firebase.database.reference
             db.child("Users")
-                .child(user!!.uid)
+                .child(profileUiState.value.user.uid!!)
                 .child("playlists")
                 .child(playlist.id!!).removeValue()
-            updateUiState(
-                profileUiState.value.copy(
-                    playlists = profileUiState.value.playlists.minus(playlist)
+            updateUiState(user =
+                IAccount(
+                    uid = profileUiState.value.user.uid,
+                    username = profileUiState.value.user.username,
+                    email = profileUiState.value.user.email,
+                    role = profileUiState.value.user.role,
+                    genres = profileUiState.value.user.genres,
+                    favouritePlaylist = profileUiState.value.user.favouritePlaylist,
+                    playlists = profileUiState.value.user.playlists.minus(playlist)
                 )
             )
         }
     }
 
     fun getAllUsers(){
-        if(profileUiState.value.role == "admin"){
-            Firebase.database.reference.child("Users").get()
-                .addOnSuccessListener { dataSnapshot ->
-                    if (dataSnapshot.exists()) {
-                        // Iterate through the children (users) and get their values
-                        for (childSnapshot in dataSnapshot.children) {
-                            val user = childSnapshot.getValue()
-                            // Do something with the user data
-//                            user.
-                            Log.i("firebase", user.toString())
-                        }
-                    } else {
-                        // The "Users" node is empty
-                        println("No users found.")
-                    }
+        Log.i("ProfileViewModel", profileUiState.value.user.role!!)
+        if(profileUiState.value.user.role == "admin"){
+            val db = Firebase.database.reference
+            db.child("Users").get().addOnCompleteListener { dataSnapshot ->
+                var allUsers = listOf<UserInfo>()
+                for(children in dataSnapshot.result.children){
+                    val uid = children.key
+                    val email = children.child("email").value.toString()
+                    val role = children.child("role").value.toString()
+                    val username = children.child("username").value.toString()
+                    val item = UserInfo(uid, username, email, role)
+                    Log.i("ProfileViewModel", item.toString())
+                    allUsers = allUsers.plus(item)
                 }
-                .addOnFailureListener { error ->
-                    Log.e("firebase", "Node not found")
-                }
+                Log.i("ProfileViewModel", allUsers.toString())
+                updateAllUsers(allUsers)
+            }
         }
     }
 
+    fun play(uri: PlayableUri){
+        viewModelScope.launch {
+            spotifyService.play(uri)
+        }
+    }
     fun makeToast(message: String) {
         spotifyService.makeToast(message)
     }
 
+    fun getInfoAboutUser(userInfo: UserInfo) {
+        viewModelScope.launch {
+            var playlists = listOf<Playlist>()
+            var favouritePlaylist = Playlist()
+            val db = Firebase.database.reference
+            val playlistsSnapshot = db.child("Users")
+                .child(userInfo.uid!!)
+                .child("playlists")
+            playlistsSnapshot.get().addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    if (task.result.hasChildren()) {
+                        for (children in task.result.children) {
+                            val playlist = children.value as? Map<String, Any> ?: mapOf()
+                            val duration = playlist["duration"].toString().toIntOrNull() ?: 0
+                            val name = playlist["name"]?.toString() ?: "No name"
+                            val tracksDb = playlist["tracks"] as? List<String> ?: listOf()
+                            val id = children.key.toString()
+                            var image: String? = null
+                            viewModelScope.launch {
+                                if (tracksDb.isNotEmpty()) {
+                                    image = loadImage(tracksDb[0])
+                                }
+                                val tracks = spotifyService.stringUrisToTracks(tracksDb)
+                                Log.i("ProfileViewModel", tracks.toString())
 
+                                playlists = playlists.plus(
+                                    Playlist(
+                                        durationInMs = duration,
+                                        name = name,
+                                        tracks = tracks,
+                                        image = image,
+                                        id = id
+                                    )
+                                )
+                                updateUserForAdmin(
+                                    user =
+                                    IAccount(
+                                        uid = userInfo.uid,
+                                        username = userInfo.username,
+                                        email = userInfo.email,
+                                        role = userInfo.role,
+                                        playlists = playlists,
+                                        favouritePlaylist = favouritePlaylist
+                                    )
+                                )
+                                Log.i("ProfileViewModel", playlists.toString())
+                            }
+                        }
+                    }
+                }
+                }
+                val playlistF = db.child("Users")
+                    .child(userInfo.uid!!)
+                    .child("favouritePlaylist")
+                playlistF.get().addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val favTracks =
+                            task.result.child("favouriteTracks").value as? List<String>
+                                ?: emptyList()
+                        val duration =
+                            task.result.child("duration").value.toString().toIntOrNull() ?: 0
+                        viewModelScope.launch {
+                            val tracks = spotifyService.stringUrisToTracks(favTracks)
+                            var image: String? = null
+                            if (favTracks.isNotEmpty()) {
+                                image = loadImage(favTracks[0])
+                            }
+                            favouritePlaylist = Playlist(
+                                durationInMs = duration,
+                                name = "Favourite Tracks",
+                                tracks = tracks,
+                                image = image,
+                                id = "favourite"
+                            )
+                            updateUserForAdmin(
+                                user =
+                                IAccount(
+                                    uid = userInfo.uid,
+                                    username = userInfo.username,
+                                    email = userInfo.email,
+                                    role = userInfo.role,
+                                    playlists = playlists,
+                                    favouritePlaylist = favouritePlaylist
+                                )
+                            )
+                        }
+                    }
+                }
+
+        }
+    }
+    fun deleteUserPlaylist(user: IAccount, playlist: Playlist){
+        viewModelScope.launch {
+            val db = Firebase.database.reference
+            db.child("Users")
+                .child(user.uid!!)
+                .child("playlists")
+                .child(playlist.id!!).removeValue()
+
+        }
+    }
+
+    suspend fun deleteTrackFromUserPlaylist(user: IAccount, track: Track, playlist: Playlist){
+        val db = Firebase.database.reference
+        var tracks = listOf<String>()
+        var duration = 0
+        val playlistNode = db.child("Users")
+            .child(user.uid!!)
+            .child("playlists")
+            .child(playlist.id!!)
+        // Для обновления uiState после выполнения удаления из бд
+        return suspendCancellableCoroutine { continuation ->
+            playlistNode.get().addOnCompleteListener {
+                if (it.isSuccessful) {
+                    tracks = it.result.child("tracks").value as? List<String> ?: emptyList()
+                    tracks = tracks.minus(track.uri.uri)
+                    Log.i("firebase", "Remove from playlist " + tracks.toString())
+                    duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
+                    duration -= track.length
+                    playlistNode.setValue(
+                        mapOf(
+                            "tracks" to tracks,
+                            "name" to playlist.name,
+                            "duration" to duration
+                        )
+                    ).addOnCompleteListener {
+                        continuation.resume(Unit)
+                    }
+                } else {
+                    continuation.resumeWithException(
+                        it.exception ?: RuntimeException("Unknown error")
+                    )
+                }
+                val index = user.playlists.indexOf(user.playlists.filter { pl -> pl.id == playlist.id }[0])
+                val tempList = user.playlists.toMutableList()
+                viewModelScope.launch {
+                    supervisorScope {
+                        playlist.image = null
+                        if (tracks.isNotEmpty()){
+                            playlist.image = loadImage(tracks[0])
+                        }
+                        playlist.tracks = spotifyService.stringUrisToTracks(tracks)
+                        Log.i("ProfileViewModel", "Second $playlist")
+                    }
+                    if(index > -1) {
+                        tempList[index] = playlist
+                    }
+                    updateUserForAdmin(user =
+                        IAccount(
+                            uid = user.uid,
+                            username = user.username,
+                            email = user.email,
+                            role = user.role,
+                            playlists = tempList,
+                            favouritePlaylist = user.favouritePlaylist
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun deleteTrackFromUserFavouriteTracks(user: IAccount, track: Track){
+        val db = Firebase.database.reference
+        var favTracks = listOf<String>()
+        var duration = 0
+        val playlistNode = db.child("Users")
+            .child(user.uid!!)
+            .child("favouritePlaylist")
+        // Для обновления uiState после выполнения удаления из бд
+        return suspendCancellableCoroutine { continuation ->
+            playlistNode.get().addOnCompleteListener {
+                if (it.isSuccessful) {
+                    Log.i("firebase", "success getting playlist")
+                    favTracks = it.result.child("favouriteTracks").value as? List<String>
+                        ?: emptyList()
+                    favTracks = favTracks.minus(track.uri.uri)
+                    Log.i("firebase", favTracks.toString())
+                    duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
+                    duration -= track.length
+                    playlistNode.setValue(
+                        mapOf(
+                            "favouriteTracks" to favTracks,
+                            "name" to user.favouritePlaylist.name,
+                            "duration" to duration
+                        )
+                    ).addOnCompleteListener {
+                        continuation.resume(Unit)
+                    }
+                    viewModelScope.launch {
+                        var image: String? = null
+                        val tracks = spotifyService.stringUrisToTracks(favTracks)
+                        if (tracks.isNotEmpty()) {
+                            supervisorScope {
+                                image = loadImage(favTracks[0])
+                            }
+                        }
+                        updateUserForAdmin(user =
+                            IAccount(
+                                uid = user.uid,
+                                username = user.username,
+                                email = user.email,
+                                role = user.role,
+                                playlists = user.playlists,
+                                favouritePlaylist = Playlist(
+                                    durationInMs = duration,
+                                    name = user.favouritePlaylist.name,
+                                    tracks = tracks,
+                                    image = image,
+                                    id = "favourite"
+                                )
+                            )
+                        )
+                    }
+                } else {
+                    continuation.resumeWithException(
+                        it.exception ?: RuntimeException("Unknown error")
+                    )
+                }
+            }
+        }
+    }
 
 }
 
 data class ProfileUiState(
-    val user: FirebaseUser? = com.example.tunez.activities.user,
-    val username: String = "",
-    val role: String = "",
-    val email: String = "",
-    val uid: DatabaseReference? = null,
-    val genres: List<String> = listOf(),
-    val favouritePlaylist: Playlist = Playlist(),
-    val playlists: List<Playlist> = listOf()
+    val user: IAccount = IAccount(),
+    val allUsers: List<UserInfo> = listOf(),
+    val currentUserForAdmin: IAccount = IAccount(),
+)
+
+data class UserInfo(
+    var uid: String? = null,
+    var username: String? = null,
+    var email: String? = null,
+    var role: String? = null,
 )

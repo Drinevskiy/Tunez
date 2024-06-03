@@ -16,7 +16,6 @@ fun <T> Activity.guardValidSpotifyApi(
     alreadyTriedToReauthenticate: Boolean = false,
     block: suspend (api: SpotifyClientApi) -> T
 ): T? {
-    Log.i("VerifyUtils", "Context: " + this)
     return runBlocking {
         try {
             val token = Model.credentialStore.spotifyToken

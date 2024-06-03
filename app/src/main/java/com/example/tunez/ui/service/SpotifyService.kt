@@ -20,6 +20,7 @@ class SpotifyService() {
     // Play Playlist
     suspend fun play(playlistUri: ContextUri) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            Log.i("SpotifyService", this.toString())
             withContext(Dispatchers.IO) {
                 api.player.startPlayback(contextUri = playlistUri)
             }
@@ -29,6 +30,8 @@ class SpotifyService() {
     // Play Track
     suspend fun play(trackURI: PlayableUri) {
         baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            Log.i("SpotifyService", this.toString())
+
             withContext(Dispatchers.IO) {
                 api.player.startPlayback(playableUrisToPlay = listOf(trackURI))
             }

@@ -58,12 +58,14 @@ import com.example.tunez.auth.SpotifyImplicitLoginActivityImpl
 import com.example.tunez.auth.SpotifyPkceLoginActivityImpl
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.utils.toast
+import com.example.tunez.viewmodels.ProfileViewModel
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.runBlocking
+import org.koin.androidx.compose.inject
 
 class LoginActivity: AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +92,7 @@ class LoginActivity: AppCompatActivity() {
 
 @Composable
 fun LoginPage(modifier: Modifier = Modifier, activity: Activity? = null){
+    val vm: ProfileViewModel by inject()
     var email by remember{ mutableStateOf("") }
     var password by remember{ mutableStateOf("") }
     var emailError by remember{ mutableStateOf("") }
@@ -186,6 +189,7 @@ fun LoginPage(modifier: Modifier = Modifier, activity: Activity? = null){
                                         activity,
                                         MainActivity::class.java
                                     ))
+                                    vm.getAllInfo()
                                 }
                             }
                             .addOnFailureListener {

@@ -56,14 +56,12 @@ class ReleasesViewModel(val spotifyService: SpotifyService): ViewModel() {
             }
             val result = tracks.toList()
                 .sortedByDescending { it.second }
-//                .take(10)
                 .toMap()
             viewModelScope.launch {
                 val chartsString: List<String> = result.keys.toList()
                 val charts = spotifyService.stringUrisToTracks(chartsString)
                 updateUiState(releasesUiState.value.copy(charts = charts, chartsString = chartsString))
             }
-//            Log.i("firebase", "Chart $result")
         }
     }
 

@@ -14,6 +14,7 @@ import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.NavBarItems
 import com.example.tunez.activities.Routes
 import com.example.tunez.content.Playlist
+import com.example.tunez.roles.User
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +53,17 @@ class NavControllerViewModel: ViewModel()  {
         val tracks = Json.encodeToString(playlist.tracks)
         navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}"){}
     }
+
+    fun goToUserPlaylist(playlist: Playlist){
+        var image: String? = "nullable"
+        if(playlist.image != null){
+            image = playlist.image
+        }
+        Log.i("NavVM", image!!)
+        val tracks = Json.encodeToString(playlist.tracks)
+        navUiState.value.controller?.navigate(Routes.UserPlaylist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}"){}
+
+    }
     fun goToAddPlaylist(){
         navUiState.value.controller?.navigate(Routes.AddPlaylist.route)
     }
@@ -59,6 +71,20 @@ class NavControllerViewModel: ViewModel()  {
     fun goToChoosePlaylist(track: Track){
 //        val trackSer = Gson().toJson(track)
         navUiState.value.controller?.navigate(Routes.ChoosePlaylist.route + "?uri=${track.uri.uri}")
+    }
+
+    fun goToUserProfile(user: UserInfo) {
+        navUiState.value.controller?.navigate(Routes.ProfileInfo.route + "?username=${user.username}&email=${user.email}&role=${user.role}&uid=${user.uid}")
+    }
+
+    fun goToHome() {
+        navUiState.value.controller?.navigate(Routes.Home.route) {
+            popUpTo(navUiState.value.controller?.graph?.findStartDestination()!!.id)
+        }
+    }
+
+    fun goToAddTrack() {
+        navUiState.value.controller?.navigate(Routes.AddTrack.route)
     }
 }
 

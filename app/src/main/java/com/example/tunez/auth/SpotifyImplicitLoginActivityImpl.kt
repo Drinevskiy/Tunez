@@ -1,6 +1,7 @@
 package com.example.tunez.auth
 
 import android.content.Intent
+import android.util.Log
 import com.adamratzman.spotify.SpotifyImplicitGrantApi
 import com.adamratzman.spotify.SpotifyScope
 import com.adamratzman.spotify.auth.implicit.AbstractSpotifyAppImplicitLoginActivity

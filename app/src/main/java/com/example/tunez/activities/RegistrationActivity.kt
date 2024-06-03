@@ -55,10 +55,12 @@ import com.example.tunez.data.Constants
 import com.example.tunez.data.Model
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.utils.toast
+import com.example.tunez.viewmodels.ProfileViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.database.database
+import org.koin.androidx.compose.inject
 
 class RegistrationActivity: AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -155,6 +157,7 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
     var isArtist by remember { mutableStateOf(false) }
     val (genres, updateGenres) = remember { mutableStateOf(emptyList<String>())}
 
+    var usernameError by remember{ mutableStateOf("") }
     var emailError by remember{ mutableStateOf("") }
     var passwordError by remember{ mutableStateOf("") }
     var passwordConfirmError by remember{ mutableStateOf("") }
@@ -163,6 +166,9 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
 
     var role = "user"
     var isShowAlertDialog by remember{ mutableStateOf(false) }
+
+    val vm: ProfileViewModel by inject()
+
     if(isShowAlertDialog){
         ErrorAlert(
             title = "Error",
@@ -206,6 +212,12 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
                 modifier = Modifier
                     .padding(10.dp)
             )
+            if (usernameError.isNotEmpty()) {
+                Text(
+                    text = usernameError,
+                    color = Color.Red
+                )
+            }
         }
         Column(modifier = modifier.padding(5.dp)) {
             TextField(
@@ -291,6 +303,12 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
         Box(modifier = Modifier.padding(bottom = 5.dp)) {
             Button(
                 onClick = {
+                    if (username.isEmpty()) {
+                        usernameError = "Username is not entered"
+                        isCanTryRegister = false
+                    } else {
+                        usernameError = ""
+                    }
                     if (email.isEmpty()) {
                         emailError = "Email is not entered"
                         isCanTryRegister = false
@@ -345,6 +363,7 @@ fun RegistrationPage(modifier: Modifier = Modifier, activity: Activity? = null){
                                         activity,
                                         MainActivity::class.java
                                     ))
+                                    vm.getAllInfo()
                                 }
                                 else{
                                     isShowAlertDialog = true
