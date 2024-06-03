@@ -118,7 +118,9 @@ fun PlaylistGrid(uiState: ProfileUiState, vmController: NavControllerViewModel){
                     .clip(RoundedCornerShape(8.dp))
                     .border(2.dp, Color.Black, RoundedCornerShape(8.dp))
                     .clickable {
-                        vmController.goToPlaylist(it)
+//                        if(it.image != null){
+                            vmController.goToPlaylist(it)
+//                        }
                     },
                 )
 
@@ -156,7 +158,7 @@ fun ProfileScreen(activity: BaseActivity, navController: NavController, modifier
         val vm: ProfileViewModel by inject()
         val uiState by vm.profileUiState.collectAsState()
         vm.getAllInfo()
-        vm.getFavouriteTracks()
+//        vm.getFavouriteTracks()
 //        vm.getPlaylists()
         Column(
             modifier = Modifier

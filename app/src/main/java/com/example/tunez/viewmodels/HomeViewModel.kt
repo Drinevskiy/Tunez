@@ -2,20 +2,12 @@ package com.example.tunez.viewmodels
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adamratzman.spotify.models.SpotifyImage
-import com.adamratzman.spotify.models.SpotifyTrackUriSerializer
-import com.adamratzman.spotify.models.Track
-import com.adamratzman.spotify.models.toTrackUri
-import com.adamratzman.spotify.notifications.SpotifyBroadcastEventData
 import com.adamratzman.spotify.notifications.SpotifyBroadcastType
 import com.adamratzman.spotify.notifications.SpotifyMetadataChangedData
 import com.adamratzman.spotify.notifications.SpotifyPlaybackStateChangedData
@@ -23,13 +15,23 @@ import com.adamratzman.spotify.notifications.registerSpotifyBroadcastReceiver
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.ui.service.SpotifyBroadcastReceiver
 import com.example.tunez.ui.service.SpotifyService
-import kotlinx.coroutines.async
+import com.google.firebase.Firebase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
+import com.google.firebase.database.database
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.temporal.WeekFields
+import java.util.Locale
 
+val today = LocalDate.now().toString()
+//val day = LocalDate.of(2024,5,30).toString()
 class HomeViewModel(val spotifyService: SpotifyService, private val application: SpotifyPlaygroundApplication): AndroidViewModel(application) {
     private val context: Context
         get() = getApplication<SpotifyPlaygroundApplication>().applicationContext
@@ -53,16 +55,72 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
         context.registerSpotifyBroadcastReceiver(receiver, *SpotifyBroadcastType.entries.toTypedArray())
     }
 
-    fun handleMetadata(data: SpotifyMetadataChangedData){
+fun handleMetadata(data: SpotifyMetadataChangedData){
+        Log.i("SpotifyService", "Handle Metadata " + data.trackName)
         viewModelScope.launch {
-            val track = spotifyService.playableUriToTrack(data.playableUri)
+            val track = spotifyService.stringUriToTrack(data.playableUri.uri)
             Log.i("SpotifyService", "Handle Metadata " + data.trackName)
-            updateUiState(homeUiState.value.copy(
-                image = track?.album?.images?.get(0),
-                name = data.trackName,
-                authors = listOf(data.artistName),
-                trackLength = data.trackLengthInSec.toFloat() / 1000f)
+            updateUiState(
+                homeUiState.value.copy(
+                    image = track.album.images?.get(0),
+                    name = data.trackName,
+                    authors = listOf(data.artistName),
+                    trackLength = data.trackLengthInSec.toFloat() / 1000f
+                )
             )
+            // Увеличение количества прослушиваний на 1
+            val date = Firebase.database.reference.child("Chart").child(today)
+            date.runTransaction(object : Transaction.Handler{
+                override fun doTransaction(currentDate: MutableData): Transaction.Result {
+                    val tracks = currentDate.value as? List<Map<String, Long>> ?: emptyList()
+                    val index = tracks.indexOf(tracks.firstOrNull { it.containsKey(data.playableUri.uri) })
+                    var newTracks = tracks.toMutableList()
+                    if(index < 0){
+                        newTracks = newTracks.plus(mapOf(data.playableUri.uri to 1L)).toMutableList()
+                    } else {
+                        var count = newTracks[index][data.playableUri.uri] ?: 0L
+                        count++
+                        newTracks[index] = mapOf(data.playableUri.uri to count)
+                    }
+                    currentDate.value = newTracks
+                    return Transaction.success(currentDate)
+                }
+                override fun onComplete(
+                    error: DatabaseError?,
+                    committed: Boolean,
+                    currentData: DataSnapshot?
+                ) {
+                    if (error != null) {
+                        Log.e("Firebase", "Transaction failed: ${error.message}")
+                    } else if (committed) {
+                        Log.d("Firebase", "Transaction success: ${currentData?.value}")
+                    } else {
+                        Log.d("Firebase", "Transaction not committed")
+                    }
+                }
+            })
+//                override fun doTransaction(currentData: MutableData): Transaction.Result {
+//                    Log.i("Chart", currentData.toString())
+//
+//                    val currentCount = currentData.getValue(Int::class.java) ?: 0
+//                    currentData.value = currentCount + 1
+//                    return Transaction.success(currentData)
+//                }
+//
+//                override fun onComplete(
+//                    error: DatabaseError?,
+//                    committed: Boolean,
+//                    currentData: DataSnapshot?
+//                ) {
+//                    if (error != null) {
+//                        Log.e("Firebase", "Transaction failed: ${error.message}")
+//                    } else if (committed) {
+//                        Log.d("Firebase", "Transaction success: ${currentData?.value}")
+//                    } else {
+//                        Log.d("Firebase", "Transaction not committed")
+//                    }
+//                }
+//            })
         }
     }
 
@@ -78,6 +136,9 @@ class HomeViewModel(val spotifyService: SpotifyService, private val application:
             if (devices.isNullOrEmpty()) {
                 Log.i("SpotifyService", "Reset playback")
                 updateUiState(homeUiState.value.copy(isPlaying = false, position = 0f))
+            }
+            else{
+                Log.i("SpotifyService", "Not Reset playback")
             }
         }
     }

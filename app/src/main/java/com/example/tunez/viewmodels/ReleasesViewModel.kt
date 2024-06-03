@@ -17,67 +17,70 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.lang.NullPointerException
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class ReleasesViewModel(val spotifyService: SpotifyService): ViewModel() {
     private var _uiState = MutableStateFlow(ReleasesUiState())
     val releasesUiState: StateFlow<ReleasesUiState> = _uiState.asStateFlow()
     init {
         getReleases()
+        getCharts()
     }
+
+
     fun updateUiState(uiState: ReleasesUiState){
         _uiState.update {
             it.copy(
                 releases = uiState.releases,
+                charts = uiState.charts,
+                chartsString = uiState.chartsString
             )
         }
     }
+    private fun getCharts() {
+        val chart = Firebase.database.reference.child("Chart")
+        chart.get().addOnCompleteListener {
+            val dates = it.result.value as? Map<String, List<Map<String, Long>>> ?: emptyMap()
+            val lastSevenDays = getLastSevenDays()
+            val tracks: MutableMap<String, Long> = mutableMapOf()
+            dates.forEach { (date, tracksData) ->
+                Log.i("firebase", "ForEach $date $lastSevenDays")
+                if (date in lastSevenDays) {
+                    tracksData.forEach { trackData ->
+                        trackData.forEach { (trackName, count) ->
+                            tracks[trackName] = (tracks[trackName] ?: 0) + count
+                        }
+                    }
+                }
+            }
+            val result = tracks.toList()
+                .sortedByDescending { it.second }
+//                .take(10)
+                .toMap()
+            viewModelScope.launch {
+                val chartsString: List<String> = result.keys.toList()
+                val charts = spotifyService.stringUrisToTracks(chartsString)
+                updateUiState(releasesUiState.value.copy(charts = charts, chartsString = chartsString))
+            }
+//            Log.i("firebase", "Chart $result")
+        }
+    }
 
+    private fun getLastSevenDays(): List<String> {
+        val today = LocalDate.now()
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        return (0..6).map { daysAgo ->
+            today.minusDays(daysAgo.toLong()).format(formatter)
+        }
+    }
     fun getReleases() {
         viewModelScope.launch {
-            val releases = spotifyService.getNewReleases()
+            val releases = spotifyService.getNewReleases()!!
             updateUiState(releasesUiState.value.copy(releases = releases))
         }
     }
 
-    fun addToFavouriteTracks(track: Track){
-        var favTracks = listOf<String>()
-        var duration = 0
-        if(user != null) {
-            viewModelScope.launch {
-                try {
-                    val db = Firebase.database.reference
-                    val playlist = db.child("Users")
-                        .child(Firebase.auth.currentUser!!.uid)
-                        .child("favouritePlaylist")
-                    playlist.get().addOnCompleteListener {
-                        Log.i("firebase", "success getting playlist")
-                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
-                        duration = it.result.child("duration").getValue().toString().toIntOrNull() ?: 0
-                        Log.i("firebase", favTracks.toString())
-                        viewModelScope.launch {
-                            if (track.uri.uri !in favTracks) {
-                                favTracks = favTracks.plus(track.uri.uri)
-                                duration += spotifyService.stringUriToTrack(track.uri.uri)?.length!!
-                            }
-                            playlist.setValue(
-                                mapOf(
-                                    "favouriteTracks" to favTracks,
-                                    "name" to "Favourite Tracks",
-                                    "duration" to duration
-                                )
-                            )
-                        }
-
-                    }
-                        .addOnFailureListener {
-                            Log.e("firebase", "error getting playlist")
-                        }
-                } catch (ex: Exception) {
-                    Log.e("firebase", "Error getting/setting data", ex)
-                }
-            }
-        }
-    }
     fun play(uri: PlayableUri){
         viewModelScope.launch {
             spotifyService.play(uri)
@@ -88,5 +91,7 @@ class ReleasesViewModel(val spotifyService: SpotifyService): ViewModel() {
 }
 
 data class ReleasesUiState(
-    var releases: List<com.adamratzman.spotify.models.Track>? = listOf(),
+    var releases: List<Track> = listOf(),
+    var charts: List<Track?> = listOf(),
+    var chartsString: List<String> = listOf(),
 )

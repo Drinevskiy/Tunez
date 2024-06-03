@@ -3,6 +3,7 @@ package com.example.tunez.viewmodels
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.adamratzman.spotify.models.Track
 import com.adamratzman.spotify.models.toPlayableUri
 import com.google.firebase.auth.FirebaseUser
@@ -11,6 +12,7 @@ import com.example.tunez.activities.user
 import com.example.tunez.content.Playlist
 import com.example.tunez.screens.millisecondsToHoursAndMinutes
 import com.example.tunez.ui.service.SpotifyService
+import com.example.tunez.utils.toast
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.database.DatabaseReference
@@ -115,7 +117,8 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
     fun loadFavouriteImage() {
         viewModelScope.launch {
             try {
-                val url = getTrackFromUri(profileUiState.value.favouritePlaylist.tracks.get(0))?.album?.images?.get(0)?.url
+//                val url = getTrackFromUri(profileUiState.value.favouritePlaylist.tracks.get(0))?.album?.images?.get(0)?.url
+                val url = profileUiState.value.favouritePlaylist.tracks.get(0)?.album?.images?.get(0)?.url
                 updateUiState(profileUiState.value.copy(favouritePlaylist =
                 Playlist(
                     durationInMs = profileUiState.value.favouritePlaylist.durationInMs,
@@ -149,30 +152,43 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         .child("favouritePlaylist")
                     playlist.get().addOnCompleteListener {
                         Log.i("firebase", "success getting playlist")
-                        favTracks =
-                            it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
-                        Log.i("firebase", favTracks.toString())
+                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
                         duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
-                        playlist.setValue(
-                            mapOf(
-                                "favouriteTracks" to favTracks,
-                                "name" to name,
-                                "duration" to duration
-                            )
-                        )
-                        loadFavouriteImage()
-                        updateUiState(
-                            profileUiState.value.copy(
-                                favouritePlaylist =
-                                Playlist(
-                                    durationInMs = duration,
-                                    name = name,
-                                    tracks = favTracks,
-                                    image = profileUiState.value.favouritePlaylist.image,
-                                    id = "favourite"
+                        Log.i("firebase", favTracks.toString())
+//                        if(favTracks.isNotEmpty()) {
+                            playlist.setValue(
+                                mapOf(
+                                    "favouriteTracks" to favTracks,
+                                    "name" to name,
+                                    "duration" to duration
                                 )
                             )
-                        )
+//                        }
+                        viewModelScope.launch {
+                            val tracks = spotifyService.stringUrisToTracks(favTracks)
+//                            val tracks = favTracks.map { spotifyService.stringUriToTrack(it) }
+                            var image: String? = null
+                            supervisorScope {
+                                if(favTracks.isNotEmpty()){
+                                    image = loadImage(favTracks[0])
+                                }
+                                Log.i("firebase", image.toString())
+                            }
+//                            loadFavouriteImage()
+                            updateUiState(
+                                profileUiState.value.copy(
+                                    favouritePlaylist =
+                                    Playlist(
+                                        durationInMs = duration,
+                                        name = name,
+                                        tracks = tracks,
+                                        image = image,
+//                                        image = profileUiState.value.favouritePlaylist.image,
+                                        id = "favourite"
+                                    )
+                                )
+                            )
+                        }
                     }
 
                     .addOnFailureListener {
@@ -181,6 +197,68 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             }
             } catch (ex: Exception) {
                 Log.e("firebase", "Error getting/setting data", ex)
+            }
+        }
+    }
+
+    fun addToFavouriteTracks(track: Track){
+        var favTracks = listOf<String>()
+        var duration = 0
+        if(user != null) {
+            viewModelScope.launch {
+                try {
+                    val db = Firebase.database.reference
+                    val playlist = db.child("Users")
+                        .child(Firebase.auth.currentUser!!.uid)
+                        .child("favouritePlaylist")
+                    playlist.get().addOnCompleteListener {
+                        Log.i("firebase", "success getting playlist")
+                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
+                        duration = it.result.child("duration").value.toString().toIntOrNull() ?: 0
+                        Log.i("firebase", favTracks.toString())
+                        viewModelScope.launch {
+                            if (track.uri.uri !in favTracks) {
+                                favTracks = favTracks.plus(track.uri.uri)
+//                                supervisorScope {
+                                duration += spotifyService.stringUriToTrack(track.uri.uri).length
+//                                }
+                            }
+                            playlist.setValue(
+                                mapOf(
+                                    "favouriteTracks" to favTracks,
+                                    "name" to "Favourite Tracks",
+                                    "duration" to duration
+                                )
+                            )
+//                            val tracks = favTracks.map { spotifyService.stringUriToTrack(it) }
+                            val tracks = spotifyService.stringUrisToTracks(favTracks)
+                            var image: String? = null
+                            if (tracks.isNotEmpty()) {
+                                supervisorScope {
+                                    image = loadImage(favTracks[0])
+                                }
+                            }
+                            updateUiState(
+                                profileUiState.value.copy(
+                                    favouritePlaylist =
+                                    Playlist(
+                                        durationInMs = duration,
+                                        name = profileUiState.value.favouritePlaylist.name,
+                                        tracks = tracks,
+                                        image = image,
+                                        id = "favourite"
+                                    )
+                                )
+                            )
+                            makeToast("Track added to Favourite Tracks")
+                        }
+                    }
+                        .addOnFailureListener {
+                            Log.e("firebase", "error getting playlist")
+                        }
+                } catch (ex: Exception) {
+                    Log.e("firebase", "Error getting/setting data", ex)
+                }
             }
         }
     }
@@ -206,29 +284,38 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                     playlistNode.setValue(
                         mapOf(
                             "favouriteTracks" to favTracks,
-                            "name" to "Favourite Tracks",
+                            "name" to profileUiState.value.favouritePlaylist.name,
                             "duration" to duration
                         )
                     ).addOnCompleteListener {
                         continuation.resume(Unit)
+                    }
+                    viewModelScope.launch {
+                        var image: String? = null
+                        val tracks = spotifyService.stringUrisToTracks(favTracks)
+                        if (tracks.isNotEmpty()) {
+                            supervisorScope {
+                                image = loadImage(favTracks[0])
+                            }
+                        }
+                        updateUiState(
+                            profileUiState.value.copy(
+                                favouritePlaylist =
+                                Playlist(
+                                    durationInMs = duration,
+                                    name = profileUiState.value.favouritePlaylist.name,
+                                    tracks = tracks,
+                                    image = image,
+                                    id = "favourite"
+                                )
+                            )
+                        )
                     }
                 } else {
                     continuation.resumeWithException(
                         it.exception ?: RuntimeException("Unknown error")
                     )
                 }
-                updateUiState(
-                    profileUiState.value.copy(
-                        favouritePlaylist =
-                        Playlist(
-                            durationInMs = duration,
-                            name = "Favourite Tracks",
-                            tracks = favTracks,
-                            image = profileUiState.value.favouritePlaylist.image,
-                            id = "favourite"
-                        )
-                    )
-                )
             }
         }
     }
@@ -257,33 +344,37 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         val playlist = children.value as? Map<String, Any> ?: mapOf()
                         val duration = playlist["duration"].toString().toIntOrNull() ?: 0
                         val name = playlist["name"]?.toString() ?: "No name"
-                        val tracks = playlist["tracks"] as? List<String> ?: listOf()
+                        val tracksDb = playlist["tracks"] as? List<String> ?: listOf()
                         val id = children.key.toString()
                         var image: String? = null
                         viewModelScope.launch {
-                            if (tracks.isNotEmpty()) {
+                            if (tracksDb.isNotEmpty()) {
                                 supervisorScope {
-                                    image = loadImage(tracks[0])
+                                    image = loadImage(tracksDb[0])
                                     Log.i("firebase", image.toString())
                                 }
                             }
-                                playlists = playlists.plus(
-                                    Playlist(
-                                        durationInMs = duration,
-                                        name = name,
-                                        tracks = tracks,
-                                        image = image,
-                                        id = id
-                                    )
+//                            val tracks = tracksDb.map { spotifyService.stringUriToTrack(it) }
+                            var tracks: List<Track?> = listOf()
+                            if(tracksDb.isNotEmpty()){
+                                tracks = spotifyService.stringUrisToTracks(tracksDb)
+                            }
+                            playlists = playlists.plus(
+                                Playlist(
+                                    durationInMs = duration,
+                                    name = name,
+                                    tracks = tracks,
+                                    image = image,
+                                    id = id
                                 )
-                                updateUiState(
-                                    profileUiState.value.copy(
-                                        playlists = playlists
-                                    )
+                            )
+                            updateUiState(
+                                profileUiState.value.copy(
+                                    playlists = playlists
                                 )
-
+                            )
                         }
-                        }
+                    }
                 }
             }
         }
@@ -307,7 +398,6 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             val playlist = Playlist(
                 durationInMs =  duration,
                 name = name,
-                tracks = tracks,
                 id = id.key
             )
             updateUiState(
@@ -336,7 +426,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                     viewModelScope.launch {
                         if (uri !in tracks) {
                             tracks = tracks.plus(uri)
-                            duration += spotifyService.stringUriToTrack(uri)?.length!!
+                            duration += spotifyService.stringUriToTrack(uri).length
                         }
                         playlistSnapshot.setValue(
                             mapOf(
@@ -350,15 +440,15 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                         Log.i("ProfileViewModel", "First: $playlist")
                         supervisorScope {
                             playlist.image = loadImage(tracks[0])
+                            playlist.tracks = spotifyService.stringUrisToTracks(tracks)
+                            playlist.durationInMs = duration
                             Log.i("ProfileViewModel", "Second $playlist")
-
                         }
                         tempList[index] = playlist
                         Log.i("ProfileViewModel", "Third $playlist")
-
                         updateUiState(
                             profileUiState.value.copy(
-                                playlists = tempList
+                                playlists = tempList.toList()
                             )
                         )
                     }
@@ -406,14 +496,41 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                     }
                     val index = profileUiState.value.playlists.indexOf(profileUiState.value.playlists.filter { pl -> pl.id == playlist.id }[0])
                     val tempList = profileUiState.value.playlists.toMutableList()
-                    tempList[index] = playlist
-                    updateUiState(
-                        profileUiState.value.copy(
-                            playlists = tempList
+                    viewModelScope.launch {
+                        supervisorScope {
+                            playlist.image = null
+                            if (tracks.isNotEmpty()){
+                                playlist.image = loadImage(tracks[0])
+                            }
+                            playlist.tracks = spotifyService.stringUrisToTracks(tracks)
+//                            playlist.durationInMs -= track.length
+                            Log.i("ProfileViewModel", "Second $playlist")
+                        }
+                        if(index > -1) {
+                            tempList[index] = playlist
+                        }
+                        updateUiState(
+                            profileUiState.value.copy(
+                                playlists = tempList
+                            )
                         )
-                    )
+                    }
                 }
             }
+        }
+    }
+    fun deletePlaylist(playlist: Playlist) {
+        viewModelScope.launch {
+            val db = Firebase.database.reference
+            db.child("Users")
+                .child(user!!.uid)
+                .child("playlists")
+                .child(playlist.id!!).removeValue()
+            updateUiState(
+                profileUiState.value.copy(
+                    playlists = profileUiState.value.playlists.minus(playlist)
+                )
+            )
         }
     }
 
@@ -439,6 +556,11 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 }
         }
     }
+
+    fun makeToast(message: String) {
+        spotifyService.makeToast(message)
+    }
+
 
 
 }

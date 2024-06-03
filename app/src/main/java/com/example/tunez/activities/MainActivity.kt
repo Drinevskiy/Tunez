@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.adamratzman.spotify.models.Track
 import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.content.Playlist
 import com.example.tunez.screens.AddPlaylistScreen
@@ -45,6 +46,8 @@ import com.example.tunez.viewmodels.NavControllerViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
+import com.google.gson.Gson
+import kotlinx.serialization.json.Json
 import org.koin.androidx.compose.inject
 
 var user: FirebaseUser? = Firebase.auth.currentUser
@@ -125,8 +128,13 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
             ){
                 val name = it.arguments?.getString("name") ?: "No name"
                 val durationInMs = it.arguments?.getInt("durationInMs") ?: 0
-                val image = it.arguments?.getString("image")
-                val tracks = it.arguments?.getString("tracks")?.split(",") ?: emptyList()
+                var image: String? = null
+                if(it.arguments?.getString("image") != "nullable") {
+                    image = it.arguments?.getString("image")
+                }
+                val tracksSerialized = it.arguments?.getString("tracks")
+                val tracks = Json.decodeFromString<List<Track>>(tracksSerialized!!)
+//                val tracks = it.arguments?.getString("tracks")?.split(",") ?: emptyList()
                 val id = it.arguments?.getString("id")
                 val playlist = Playlist(
                     durationInMs = durationInMs,

@@ -1,6 +1,7 @@
 package com.example.tunez.screens
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,19 +65,19 @@ import org.koin.androidx.compose.inject
 import kotlin.reflect.KSuspendFunction1
 
 @Composable
-fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService){
+fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService) {
     val scope = rememberCoroutineScope()
-    var tracks: List<Track> by remember { mutableStateOf(listOf()) }
-    var durationText by remember { mutableStateOf(millisecondsToHoursAndMinutes(playlist.durationInMs)) }
+    var tracks: List<Track?> by remember { mutableStateOf(playlist.tracks) }
+    var durationText by remember { mutableStateOf(millisecondsToHoursAndMinutes (playlist.durationInMs)) }
     val vmController: NavControllerViewModel by inject()
     val vm: ProfileViewModel by inject()
     val uiState by vm.profileUiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        scope.launch {
-            tracks = playlist.tracks.map { spotifyService.stringUriToTrack(it)!! }
-        }
-    }
+//    LaunchedEffect(Unit) {
+//        scope.launch {
+//            tracks = playlist.tracks.map { spotifyService.stringUriToTrack(it)!! }
+//        }
+//    }
     Column {
         Row(modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -113,7 +114,19 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService){
                         .fillMaxWidth(0.65f)
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            if(playlist.id != "favourite") {
+                Spacer(modifier = Modifier.weight(0.5f))
+                IconButton(onClick = {
+                    vm.deletePlaylist(playlist)
+                    vmController.goBack()
+                    vm.makeToast("${playlist.name} deleted")
+                }) {
+                    Icon(imageVector = Icons.Filled.Delete, contentDescription = null)
+                }
+            }
+            else{
+                Spacer(modifier = Modifier.weight(1f))
+            }
         }
 
         LazyVerticalGrid(
@@ -123,7 +136,7 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService){
             modifier = Modifier.fillMaxWidth()
         ){
             items(tracks) {track ->
-                TrackRow(track, spotifyService::playTrack) {
+                TrackRow(track!!, spotifyService::playTrack) {
                     scope.launch {
                         Log.i("PlaylistScreen", "Remove from playlist $playlist $track")
                         if(playlist.id != "favourite"){
@@ -132,10 +145,13 @@ fun PlaylistScreen(playlist: Playlist, spotifyService: SpotifyService){
                         }
                         else {
                             vm.removeFromFavouriteTracks(track)
-//                            Log.i("PlaylistScreen", "Remove from favourite $track")
                         }
-                        durationText = millisecondsToHoursAndMinutes(uiState.favouritePlaylist.durationInMs)
+                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
+                        playlist.durationInMs -= track.length
+                        Log.i("PlaylistScreen", "Duration playlist ${playlist.durationInMs}")
+                        durationText = millisecondsToHoursAndMinutes(playlist.durationInMs)
                         tracks = tracks.minus(track)
+                        vm.makeToast("${track.name} deleted from ${playlist.name}")
                     }
                 }
             }
@@ -241,6 +257,9 @@ fun ChoosePlaylistScreen(uri: String){
                         vm.addTrackToPlaylist(uri, it)
 //                        vm.getPlaylists()
                     }
+                    vmController.goBack()
+                    val message = "Track added to ${playlists.joinToString(", ") { it.name }}"
+                    vm.makeToast(message)
                 },
             ) {
                 Text(text = "Add")
@@ -395,6 +414,7 @@ fun AddPlaylistScreen(){
                         keyboardController?.hide()
                         vmController.goBack()
                         vm.addPlaylist(name)
+                        vm.makeToast("$name added")
                     },
                 ) {
                     Text(text = "Add")

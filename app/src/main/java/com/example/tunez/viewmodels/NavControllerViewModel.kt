@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class NavControllerViewModel: ViewModel()  {
 //    private val _navController = MutableStateFlow<NavController?>(null)
@@ -42,14 +44,13 @@ class NavControllerViewModel: ViewModel()  {
 //        }
     }
     fun goToPlaylist(playlist: Playlist){
-        Log.i("NavVM", navUiState.value.controller.toString())
-        val playlistSerialized = Gson().toJson(playlist.name)
-        Log.i("NavVM", playlistSerialized)
-        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${playlist.image}&tracks=${playlist.tracks.joinToString(",")}&id=${playlist.id}"){
-//        navUiState.value.controller?.navigate(Routes.Playlist.route + "/$playlistSerialized"){
-//            popUpTo(NavBarItems.BarItems[4].route)
-//            restoreState = false
+        var image: String? = "nullable"
+        if(playlist.image != null){
+            image = playlist.image
         }
+        Log.i("NavVM", image!!)
+        val tracks = Json.encodeToString(playlist.tracks)
+        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}"){}
     }
     fun goToAddPlaylist(){
         navUiState.value.controller?.navigate(Routes.AddPlaylist.route)

@@ -1,5 +1,6 @@
 package com.example.tunez.screens
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,7 @@ import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.user
 import com.example.tunez.viewmodels.AppViewModelProvider
 import com.example.tunez.viewmodels.NavControllerViewModel
+import com.example.tunez.viewmodels.ProfileViewModel
 import com.example.tunez.viewmodels.SearchUiState
 import com.example.tunez.viewmodels.SearchViewModel
 import com.skydoves.landscapist.glide.GlideImage
@@ -101,13 +103,14 @@ fun SearchScreen(modifier: Modifier = Modifier, vm: SearchViewModel = viewModel(
                 modifier = Modifier.weight(1f)
             )
         }
-        TracksList(uiState, vm, scope)
+        TracksList(uiState, vm)
     }
 }
 
 @Composable
-fun TracksList(uiState: SearchUiState, vm: SearchViewModel, scope: CoroutineScope){
+fun TracksList(uiState: SearchUiState, vm: SearchViewModel){
     val vmNav: NavControllerViewModel by inject()
+    val vmProfile: ProfileViewModel by inject()
     LazyVerticalGrid(
         columns = GridCells.Fixed(1),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -116,7 +119,7 @@ fun TracksList(uiState: SearchUiState, vm: SearchViewModel, scope: CoroutineScop
     ){
         if(uiState.searchResult != null) {
             items(uiState.searchResult!!) {
-                TrackRow(it, vm::play, vm::addToFavouriteTracks, vmNav::goToChoosePlaylist)
+                TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist)
             }
         }
     }
@@ -134,8 +137,8 @@ fun TrackRow(
         .clickable { onClick.invoke(track.uri) }) {
         GlideImage(
             imageModel =
-            track.album.images?.get(0)?.url
-                ?: "https://sun9-25.userapi.com/impg/Z3epnPuW1AG9bY8vNk6CxvPUfDC8Glje-nfRVA/tHFcX2ef9rk.jpg?size=900x900&quality=96&sign=27b00a943c3ac22fbaa34b00db97bea8&c_uniq_tag=DeuKuphk22jYBIyArxc3iAF8-bHFXuRzK_HtgZbSCrM&type=album",
+            track.album.images?.get(0)?.url ?:
+                "https://sun9-25.userapi.com/impg/Z3epnPuW1AG9bY8vNk6CxvPUfDC8Glje-nfRVA/tHFcX2ef9rk.jpg?size=900x900&quality=96&sign=27b00a943c3ac22fbaa34b00db97bea8&c_uniq_tag=DeuKuphk22jYBIyArxc3iAF8-bHFXuRzK_HtgZbSCrM&type=album",
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier

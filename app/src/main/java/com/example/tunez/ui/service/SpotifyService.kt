@@ -10,6 +10,7 @@ import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.MainActivity
 import com.example.tunez.auth.guardValidSpotifyApi
 import com.example.tunez.data.Constants
+import com.example.tunez.utils.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -149,24 +150,28 @@ class SpotifyService() {
     suspend fun getNewReleases(): List<com.adamratzman.spotify.models.Track>? {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                Log.i("SpotifyService", "Start getNewReleases")
                 val result = api.browse.getNewReleases(
                     limit = 5
                 )
-//                val res = api.browse.getFeaturedPlaylists(limit = 5).playlists.get(2).toFullPlaylist()?.tracks?.items?.take(15)?.map { it.track!!.asTrack!! }
-//                val result = api.personalization.getTopTracks()
                 var tracks: List<com.adamratzman.spotify.models.Track> = listOf()
-                result.forEach {
-                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()!!
-                    tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()!!
-                    tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()!!
-                    tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![3].toFullTrack()!!
-                    tracks  = tracks.plus(track)
-                    track = it.toFullAlbum()?.tracks!![4].toFullTrack()!!
-                    tracks  = tracks.plus(track)
+                result.forEach{
+                    tracks = tracks.plus(it?.toFullAlbum()?.tracks!!.take(5).map { it.toFullTrack()!!})
                 }
+//                result.forEach {
+//                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()!!
+//                    tracks  = tracks.plus(track)
+//                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()!!
+//                    tracks  = tracks.plus(track)
+//                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()!!
+//                    tracks  = tracks.plus(track)
+//                    track = it.toFullAlbum()?.tracks!![3].toFullTrack()!!
+//                    tracks  = tracks.plus(track)
+//                    track = it.toFullAlbum()?.tracks!![4].toFullTrack()!!
+//                    tracks  = tracks.plus(track)
+//                }
+                Log.i("SpotifyService", "Finish getNewReleases ${result}")
+
                 tracks
 //                res
 //                result.toList()
@@ -177,7 +182,7 @@ class SpotifyService() {
     suspend fun playableUriToTrack(playableUri: PlayableUri): Track?{
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-                Log.i("SpotifyService", "Start playableUriToTrack")
+                Log.i("SpotifyService", "Start playableUriToTrack $playableUri")
                 val track = api.tracks.getTrack(playableUri.uri)
                 Log.i("SpotifyService", "Finish playableUriToTrack")
                 track
@@ -185,11 +190,28 @@ class SpotifyService() {
         }
     }
 
-    suspend fun stringUriToTrack(uri: String): Track?{
+    suspend fun stringUriToTrack(uri: String): Track {
         return withContext(Dispatchers.IO) {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
-                api.tracks.getTrack(uri)
-            }
+                Log.i("SpotifyService", "1: stringUriToTrack")
+                val track = api.tracks.getTrack(uri)
+                Log.i("SpotifyService", "2: stringUriToTrack $track")
+                track
+            }!!
+        }
+    }
+
+    suspend fun stringUrisToTracks(uri: List<String>): List<Track?>{
+        return withContext(Dispatchers.IO) {
+            return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+                Log.i("SpotifyService", "1: stringUrisToTracks")
+                var track: List<Track?> = listOf()
+                if(uri.isNotEmpty()){
+                    track = api.tracks.getTracks(*uri.toTypedArray())
+                }
+                Log.i("SpotifyService", "2: stringUrisToTracks")
+                track
+            } ?: emptyList()
         }
     }
 
@@ -218,6 +240,10 @@ class SpotifyService() {
                 api.player.getDevices()
             }
         }
+    }
+
+    fun makeToast(message: String) {
+        baseActivity.toast(message)
     }
 
 }

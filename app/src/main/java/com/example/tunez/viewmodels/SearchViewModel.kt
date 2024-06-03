@@ -58,49 +58,6 @@ class SearchViewModel(val spotifyService: SpotifyService): ViewModel() {
             }
         }
     }
-    fun addToFavouriteTracks(track: Track){
-        var favTracks = listOf<String>()
-        var duration = 0
-        if(user != null) {
-            viewModelScope.launch {
-                try {
-                    val db = Firebase.database.reference
-                    val playlist = db.child("Users")
-                        .child(Firebase.auth.currentUser!!.uid)
-                        .child("favouritePlaylist")
-                    playlist.get().addOnCompleteListener {
-                        Log.i("firebase", "success getting playlist")
-                        favTracks = it.result.child("favouriteTracks").value as? List<String> ?: emptyList()
-                        duration = it.result.child("duration").getValue().toString().toIntOrNull() ?: 0
-                        Log.i("firebase", favTracks.toString())
-                        viewModelScope.launch {
-                            if (track.uri.uri !in favTracks) {
-                                favTracks = favTracks.plus(track.uri.uri)
-                                duration += spotifyService.stringUriToTrack(track.uri.uri)?.length!!
-                            }
-                            playlist.setValue(
-                                mapOf(
-                                    "favouriteTracks" to favTracks,
-                                    "name" to "Favourite Tracks",
-                                    "duration" to duration
-                                )
-                            )
-                        }
-
-                    }
-                    .addOnFailureListener {
-                        Log.e("firebase", "error getting playlist")
-                    }
-                } catch (ex: Exception) {
-                    Log.e("firebase", "Error getting/setting data", ex)
-                }
-            }
-        }
-    }
-
-    fun addToPlaylist(){
-
-    }
     fun play(uri: PlayableUri){
         viewModelScope.launch {
             spotifyService.play(uri)
