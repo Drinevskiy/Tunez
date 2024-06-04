@@ -1,6 +1,7 @@
 package com.example.tunez.ui.service
 
 import android.util.Log
+import com.adamratzman.spotify.endpoints.client.ClientPlayerApi
 import com.adamratzman.spotify.models.ContextUri
 import com.adamratzman.spotify.models.Device
 import com.adamratzman.spotify.models.PlayableUri
@@ -161,23 +162,8 @@ class SpotifyService() {
                 result.forEach{
                     tracks = tracks.plus(it?.toFullAlbum()?.tracks!!.take(5).map { it.toFullTrack()!!})
                 }
-//                result.forEach {
-//                    var track = it?.toFullAlbum()?.tracks!![0].toFullTrack()!!
-//                    tracks  = tracks.plus(track)
-//                    track = it.toFullAlbum()?.tracks!![1].toFullTrack()!!
-//                    tracks  = tracks.plus(track)
-//                    track = it.toFullAlbum()?.tracks!![2].toFullTrack()!!
-//                    tracks  = tracks.plus(track)
-//                    track = it.toFullAlbum()?.tracks!![3].toFullTrack()!!
-//                    tracks  = tracks.plus(track)
-//                    track = it.toFullAlbum()?.tracks!![4].toFullTrack()!!
-//                    tracks  = tracks.plus(track)
-//                }
                 Log.i("SpotifyService", "Finish getNewReleases ${result}")
-
                 tracks
-//                res
-//                result.toList()
             }
         }
     }
@@ -241,6 +227,14 @@ class SpotifyService() {
             return@withContext baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
 //                Log.i("context", api.player.getDevices().toString())
                 api.player.getDevices()
+            }
+        }
+    }
+
+    suspend fun addTrackToQueue(track: Track){
+        baseActivity.guardValidSpotifyApi(classBackTo = MainActivity::class.java) { api ->
+            withContext(Dispatchers.IO) {
+                api.player.addItemToEndOfQueue(track.uri)
             }
         }
     }

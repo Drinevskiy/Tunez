@@ -119,7 +119,7 @@ fun TracksList(uiState: SearchUiState, vm: SearchViewModel){
     ){
         if(uiState.searchResult != null) {
             items(uiState.searchResult!!) {
-                TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist)
+                TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist, vmProfile::addToEndOfQueue)
             }
         }
     }
@@ -130,7 +130,8 @@ fun TrackRow(
     track: Track,
     onClick: (PlayableUri) -> Unit,
     addToFavourite: (Track) -> Unit,
-    goToChoosePlaylist: (Track) -> Unit
+    goToChoosePlaylist: (Track) -> Unit,
+    addToQueue: (Track) -> Unit
 ) {
     Row(modifier = Modifier
         .fillMaxWidth()
@@ -170,7 +171,9 @@ fun TrackRow(
                 ) {
                     TrackOptionMenu(
                         track = track,
-                        options = mapOf("Add to favourite" to addToFavourite, "Add to playlist" to goToChoosePlaylist),
+                        options = mapOf("Add to favourite" to addToFavourite,
+                            "Add to playlist" to goToChoosePlaylist,
+                            "Add to queue" to addToQueue),
 //                            mapOf("Add to playlist" to goToChoosePlaylist),
 //                            ),
 //                        onOptionSelected = addToFavourite

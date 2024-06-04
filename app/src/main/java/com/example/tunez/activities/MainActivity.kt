@@ -36,6 +36,7 @@ import com.example.tunez.SpotifyPlaygroundApplication
 import com.example.tunez.content.Playlist
 import com.example.tunez.screens.AddPlaylistScreen
 import com.example.tunez.screens.AddTrackScreen
+import com.example.tunez.screens.ArtistProfileScreen
 import com.example.tunez.screens.ChoosePlaylistScreen
 import com.example.tunez.screens.EditTrackScreen
 import com.example.tunez.screens.HomeScreen
@@ -209,20 +210,23 @@ fun NavPage(activity: BaseActivity) {
             composable(Routes.AddTrack.route) {
                 AddTrackScreen(activity)
             }
-            composable(Routes.EditTrack.route + "?name={name}&blocked={blocked}&edited={edited}&reason={reason}&id={id}",
+            composable(Routes.EditTrack.route + "?name={name}&blocked={blocked}&edited={edited}&reason={reason}&count={count}&id={id}&artistId={artistId}",
                 arguments = listOf(
                     navArgument("name") { type = NavType.StringType },
                     navArgument("blocked") { type = NavType.BoolType },
                     navArgument("edited") { type = NavType.BoolType },
                     navArgument("reason") { type = NavType.StringType },
+                    navArgument("count") { type = NavType.LongType },
                     navArgument("id") { type = NavType.StringType }
                 )) {
                 val name = it.arguments?.getString("name") ?: "No name"
                 val blocked = it.arguments?.getBoolean("blocked") ?: false
                 val edited = it.arguments?.getBoolean("edited") ?: false
                 val reason = it.arguments?.getString("reason") ?: ""
+                val count = it.arguments?.getLong("count") ?: 0L
                 val id = it.arguments?.getString("id")
-                val track = com.example.tunez.content.Track(id, name, blocked, edited, reason)
+                val artistId = it.arguments?.getString("artistId")
+                val track = com.example.tunez.content.Track(id, name, blocked, edited, reason, count, artistId)
                 EditTrackScreen(track)
             }
             composable(Routes.InfoTrackForAdmin.route + "?name={name}&blocked={blocked}&edited={edited}&reason={reason}&id={id}&artistId={artistId}",
@@ -242,6 +246,20 @@ fun NavPage(activity: BaseActivity) {
                 val artistId = it.arguments?.getString("artistId")
                 val track = com.example.tunez.content.Track(id, name, blocked, edited, reason, artistId = artistId)
                 InfoTrackForAdminScreen(track)
+            }
+            composable(Routes.ArtistProfile.route + "?username={username}&email={email}&role={role}&uid={uid}",
+                arguments = listOf(
+                    navArgument("username") { type = NavType.StringType },
+                    navArgument("email") { type = NavType.StringType },
+                    navArgument("role") { type = NavType.StringType },
+                    navArgument("uid") { type = NavType.StringType }
+                )) {
+                val username = it.arguments?.getString("username") ?: "No name"
+                val email = it.arguments?.getString("email") ?: "No email"
+                val role = it.arguments?.getString("role") ?: "user"
+                val uid = it.arguments?.getString("uid") ?: "No uid"
+                val userInfo = UserInfo(uid, username, email, role)
+                ArtistProfileScreen(userInfo = userInfo)
             }
         }
         BottomNavigationBar(navController)
@@ -328,4 +346,6 @@ sealed class Routes(val route: String) {
     object AddTrack : Routes("add-track")
     object EditTrack : Routes("edit-track")
     object InfoTrackForAdmin : Routes("info-track-for-admin")
+    object ArtistProfile : Routes("artist-profile")
+
 }

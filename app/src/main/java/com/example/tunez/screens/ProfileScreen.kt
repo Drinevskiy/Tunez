@@ -184,11 +184,76 @@ fun ProfileScreen(activity: BaseActivity, modifier: Modifier = Modifier, ){
                 if(uiState.user.role == "admin") {
                     AllUsersList(uiState, vmNav)
                 }
+                if(uiState.user.role != "admin"){
+                    ArtistList(uiState, vmNav)
+                }
                 if(uiState.user.role == "artist"){
                     ArtistPanel(uiState, vmNav, vmNav::goToArtistEditTrack)
                 }
             }
-//        vm.getAllUsers()
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ArtistList(uiState: ProfileUiState, vmController: NavControllerViewModel) {
+    Text(
+        text = "All artists",
+        textAlign = TextAlign.Center,
+        fontWeight = FontWeight.Bold,
+        fontSize = 19.sp,
+        modifier = Modifier
+            .padding(top = 10.dp, bottom = 20.dp)
+            .fillMaxWidth()
+    )
+    FlowRow(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        maxItemsInEachRow = 1,
+        modifier = Modifier.padding(bottom = 20.dp)
+    ){
+        uiState.allUsers.forEach {
+            if(it.role == "artist") {
+                if(it.uid != uiState.user.uid) {
+                    ArtistRow(it, vmController::goToArtistProfile)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ArtistRow(
+    user: UserInfo,
+    onClick: (UserInfo) -> Unit,
+){
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .clickable { onClick.invoke(user) }) {
+        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            ) {
+                Text(
+                    text = user.username!!,
+                    fontSize = 22.sp,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = user.email!!,
+                    fontSize = 17.sp,
+                    modifier = Modifier
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = user.role!!,
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+            )
         }
     }
 }

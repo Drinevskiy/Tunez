@@ -23,20 +23,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class NavControllerViewModel: ViewModel()  {
-//    private val _navController = MutableStateFlow<NavController?>(null)
-//    val navController: StateFlow<NavController?> = _navController.asStateFlow()
+class NavControllerViewModel: ViewModel() {
     private var _uiState = MutableStateFlow(NavUiState())
     val navUiState: StateFlow<NavUiState> = _uiState.asStateFlow()
 
     fun setNavController(controller: NavHostController) {
-        _uiState.update { it.copy(controller = controller)}
+        _uiState.update { it.copy(controller = controller) }
         Log.i("NavVM", controller.toString())
         Log.i("NavVM", navUiState.value.controller.toString())
 
     }
 
-    fun goBack(){
+    fun goBack() {
         Log.i("NavVM", navUiState.value.controller.toString())
         navUiState.value.controller?.popBackStack()
 //        navUiState.value.controller?.navigate(Routes.Profile.route) {
@@ -44,32 +42,33 @@ class NavControllerViewModel: ViewModel()  {
 //            restoreState = false
 //        }
     }
-    fun goToPlaylist(playlist: Playlist){
+
+    fun goToPlaylist(playlist: Playlist) {
         var image: String? = "nullable"
-        if(playlist.image != null){
+        if (playlist.image != null) {
             image = playlist.image
         }
         Log.i("NavVM", image!!)
         val tracks = Json.encodeToString(playlist.tracks)
-        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}"){}
+        navUiState.value.controller?.navigate(Routes.Playlist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}") {}
     }
 
-    fun goToUserPlaylist(playlist: Playlist){
+    fun goToUserPlaylist(playlist: Playlist) {
         var image: String? = "nullable"
-        if(playlist.image != null){
+        if (playlist.image != null) {
             image = playlist.image
         }
         Log.i("NavVM", image!!)
         val tracks = Json.encodeToString(playlist.tracks)
-        navUiState.value.controller?.navigate(Routes.UserPlaylist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}"){}
+        navUiState.value.controller?.navigate(Routes.UserPlaylist.route + "?name=${playlist.name}&durationInMs=${playlist.durationInMs}&image=${image!!}&tracks=${tracks}&id=${playlist.id}") {}
 
     }
-    fun goToAddPlaylist(){
+
+    fun goToAddPlaylist() {
         navUiState.value.controller?.navigate(Routes.AddPlaylist.route)
     }
 
-    fun goToChoosePlaylist(track: Track){
-//        val trackSer = Gson().toJson(track)
+    fun goToChoosePlaylist(track: Track) {
         navUiState.value.controller?.navigate(Routes.ChoosePlaylist.route + "?uri=${track.uri.uri}")
     }
 
@@ -88,11 +87,15 @@ class NavControllerViewModel: ViewModel()  {
     }
 
     fun goToArtistEditTrack(track: com.example.tunez.content.Track) {
-        navUiState.value.controller?.navigate(Routes.EditTrack.route + "?name=${track.name}&blocked=${track.blocked}&edited=${track.edited}&reason=${track.reason}&id=${track.id}")
+        navUiState.value.controller?.navigate(Routes.EditTrack.route + "?name=${track.name}&blocked=${track.blocked}&edited=${track.edited}&reason=${track.reason}&count=${track.count}&id=${track.id}&artistId=${track.artistId}")
     }
 
     fun goToArtistEditTrackForAdmin(track: com.example.tunez.content.Track) {
         navUiState.value.controller?.navigate(Routes.InfoTrackForAdmin.route + "?name=${track.name}&blocked=${track.blocked}&edited=${track.edited}&reason=${track.reason}&id=${track.id}&artistId=${track.artistId}")
+    }
+
+    fun goToArtistProfile(user: UserInfo) {
+        navUiState.value.controller?.navigate(Routes.ArtistProfile.route + "?username=${user.username}&email=${user.email}&role=${user.role}&uid=${user.uid}")
     }
 }
 

@@ -72,7 +72,7 @@ fun TracksList(uiState: RecommendationUiState, vm: RecommendationsViewModel, mod
     ){
         if(uiState.recommendations != null) {
             items(uiState.recommendations!!) {
-                TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist)
+                TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist, vmProfile::addToEndOfQueue)
             }
         }
     }

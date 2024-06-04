@@ -8,7 +8,6 @@ import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.user
 import com.example.tunez.content.Playlist
 import com.example.tunez.roles.IAccount
-import com.example.tunez.roles.User
 import com.example.tunez.ui.service.SpotifyService
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -68,6 +66,14 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         }
     }
 
+    private fun updateCurrentArtistTracks(tracks: List<com.example.tunez.content.Track>){
+        _uiState.update {
+            it.copy(
+                currentArtistTracks = tracks
+            )
+        }
+    }
+
     fun getAllInfo() {
         if (user != null) {
             viewModelScope.launch {
@@ -84,7 +90,8 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                             email = dataSnapshot.child("email").value.toString()
                             role = dataSnapshot.child("role").value.toString()
                             username = dataSnapshot.child("username").value.toString()
-                            genres = dataSnapshot.child("genres").value as? List<String> ?: emptyList()
+                            genres =
+                                dataSnapshot.child("genres").value as? List<String> ?: emptyList()
                             updateUiState(
                                 user =
                                 IAccount(
@@ -99,21 +106,10 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                             )
                             getPlaylists()
                             getFavouriteTracks()
-                            if(profileUiState.value.user.role == "admin"){
-                                Firebase.database.reference.child("Users").get().addOnCompleteListener { dataSnapshot2 ->
-                                    var allUsers = listOf<UserInfo>()
-                                    for(children in dataSnapshot2.result.children){
-                                        val uid2 = children.key
-                                        val email2 = children.child("email").value.toString()
-                                        val role2 = children.child("role").value.toString()
-                                        val username2 = children.child("username").value.toString()
-                                        val item = UserInfo(uid2, username2, email2, role2)
-                                        allUsers = allUsers.plus(item)
-                                    }
-                                    updateAllUsers(allUsers)
-                                }
-                            }
-                            if(profileUiState.value.user.role == "artist"){
+//                            if (profileUiState.value.user.role == "admin") {
+                                getAllUsers()
+//                            }
+                            if (profileUiState.value.user.role == "artist") {
                                 getArtistTracks(profileUiState.value.user.uid!!)
                             }
                         }
@@ -125,9 +121,10 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 })
             }
         }
+
     }
 
-    private suspend fun getTrackFromUri(uri: String): Track? {
+    private suspend fun getTrackFromUri(uri: String): Track {
         return withContext(viewModelScope.coroutineContext) {
             spotifyService.stringUriToTrack(uri)
         }
@@ -591,11 +588,11 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
 
     fun getAllUsers(){
         Log.i("ProfileViewModel", profileUiState.value.user.role!!)
-        if(profileUiState.value.user.role == "admin"){
+//        if(profileUiState.value.user.role == "admin"){
             val db = Firebase.database.reference
             db.child("Users").get().addOnCompleteListener { dataSnapshot ->
                 var allUsers = listOf<UserInfo>()
-                for(children in dataSnapshot.result.children){
+                for (children in dataSnapshot.result.children) {
                     val uid = children.key
                     val email = children.child("email").value.toString()
                     val role = children.child("role").value.toString()
@@ -607,7 +604,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                 Log.i("ProfileViewModel", allUsers.toString())
                 updateAllUsers(allUsers)
             }
-        }
+//        }
     }
 
     fun play(uri: PlayableUri){
@@ -845,6 +842,20 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         }
     }
 
+//    fun getAllUsers(){
+//        Firebase.database.reference.child("Users").get().addOnCompleteListener { dataSnapshot2 ->
+//            var allUsers = listOf<UserInfo>()
+//            for(children in dataSnapshot2.result.children){
+//                val uid2 = children.key
+//                val email2 = children.child("email").value.toString()
+//                val role2 = children.child("role").value.toString()
+//                val username2 = children.child("username").value.toString()
+//                val item = UserInfo(uid2, username2, email2, role2)
+//                allUsers = allUsers.plus(item)
+//            }
+//            updateAllUsers(allUsers)
+//        }
+//    }
     fun getArtistTracks(uid: String){
         Firebase.database.reference
             .child("Users")
@@ -863,6 +874,27 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                     artistTracks = artistTracks.plus(item)
                 }
                 updateArtistTracks(artistTracks)
+            }
+    }
+
+    fun getCurrentArtistTracks(uid: String){
+        Firebase.database.reference
+            .child("Users")
+            .child(uid)
+            .child("artistTracks").get()
+            .addOnCompleteListener { dataSnapshot2 ->
+                var artistTracks = listOf<com.example.tunez.content.Track>()
+                for(children in dataSnapshot2.result.children){
+                    val id = children.key
+                    val blocked = children.child("blocked").value.toString().toBoolean()
+                    val edited = children.child("edited").value.toString().toBoolean()
+                    val trackName = children.child("name").value.toString()
+                    val reason = children.child("reason").value.toString()
+                    val count = children.child("count").value.toString().toLongOrNull() ?: 0L
+                    val item = com.example.tunez.content.Track(id, trackName, blocked, edited, reason, count, uid)
+                    artistTracks = artistTracks.plus(item)
+                }
+                updateCurrentArtistTracks(artistTracks)
             }
     }
     fun addTrackToArtistProfile(name: String) {
@@ -892,6 +924,7 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         trackNode.child("name").setValue(track.name).addOnCompleteListener {
             if (it.isSuccessful) {
                 trackNode.child("edited").setValue(true)
+                getArtistTracks(track.artistId!!)
             }
         }
     }
@@ -943,12 +976,35 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
             }
     }
 
+    fun playArtistTrack(track: com.example.tunez.content.Track) {
+        val db = Firebase.database.reference
+        val trackNode = db.child("Users")
+            .child(track.artistId!!)
+            .child("artistTracks")
+            .child(track.id!!)
+        trackNode.child("count").get().addOnCompleteListener {
+            if (it.isSuccessful) {
+                trackNode.child("count").setValue((it.result.value.toString().toIntOrNull() ?: 0) + 1).addOnCompleteListener {
+                        makeToast("${track.name} play")
+                }
+            }
+        }
+    }
+
+    fun addToEndOfQueue(track: Track) {
+        viewModelScope.launch {
+            spotifyService.addTrackToQueue(track)
+            makeToast("${track.name} added to queue")
+        }
+    }
+
 }
 
 data class ProfileUiState(
     val user: IAccount = IAccount(),
     val allUsers: List<UserInfo> = listOf(),
     val currentUserForAdmin: IAccount = IAccount(),
+    val currentArtistTracks: List<com.example.tunez.content.Track> = listOf(),
     val artistTracks: List<com.example.tunez.content.Track> = listOf(),
 )
 

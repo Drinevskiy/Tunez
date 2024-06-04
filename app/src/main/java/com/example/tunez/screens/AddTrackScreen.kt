@@ -18,7 +18,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -176,7 +178,7 @@ fun EditTrackScreen(track: Track){
                         .padding(bottom = 20.dp)
                 )
             }
-            if(track.edited){
+            if(track.edited && track.blocked){
                 Text(
                     text = "Changes are being considered. Please wait",
                     textAlign = TextAlign.Center,
@@ -187,6 +189,19 @@ fun EditTrackScreen(track: Track){
                         .padding(bottom = 20.dp)
                 )
             }
+            var listenText = "Listened to ${track.count} time"
+            if(track.count > 1){
+                listenText+="s"
+            }
+            Text(
+                text = listenText,
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                modifier = Modifier
+                    .padding(bottom = 20.dp)
+                //                .fillMaxWidth()
+            )
             TextField(
                 value = "$name",
                 onValueChange = { name = it },
@@ -222,7 +237,7 @@ fun EditTrackScreen(track: Track){
                     onClick = {
                         keyboardController?.hide()
                         vmController.goBack()
-                        val newTrack = Track(track.id, name, track.blocked, track.edited, track.reason)
+                        val newTrack = Track(track.id, name, track.blocked, track.edited, track.reason, track.count, track.artistId)
                         vm.changeArtistTrack(newTrack)
                         vm.makeToast("$name edited")
                     },
@@ -269,7 +284,7 @@ fun InfoTrackForAdminScreen(track: com.example.tunez.content.Track){
                     modifier = Modifier.size(30.dp, 30.dp)
                 )
             }
-            Spacer(modifier = Modifier.weight(0.7f))
+            Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "${track.name}",
                 textAlign = TextAlign.Center,
@@ -279,6 +294,11 @@ fun InfoTrackForAdminScreen(track: com.example.tunez.content.Track){
                     .padding(0.dp, 20.dp)
             )
             Spacer(modifier = Modifier.weight(1f))
+            IconButton(onClick = {
+                vm.playArtistTrack(track)
+            }) {
+                Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
+            }
         }
     }
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -372,7 +392,6 @@ fun InfoTrackForAdminScreen(track: com.example.tunez.content.Track){
                             keyboardController?.hide()
                             vmController.goBack()
                             vm.deleteArtistTrack(track)
-//                            vm.
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,

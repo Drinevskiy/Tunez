@@ -88,7 +88,7 @@ fun ChartList(uiState: ReleasesUiState, vm: ReleasesViewModel){
         modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 10.dp)
     ){
         uiState.charts.take(15).forEach {
-            TrackRow(it!!, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist)
+            TrackRow(it!!, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist, vmProfile::addToEndOfQueue)
         }
     }
 //    LazyVerticalGrid(
@@ -177,7 +177,7 @@ fun TracksList(uiState: ReleasesUiState, vm: ReleasesViewModel){
         modifier = Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 10.dp)
     ){
         uiState.releases.forEach {
-            TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist)
+            TrackRow(it, vm::play, vmProfile::addToFavouriteTracks, vmNav::goToChoosePlaylist, vmProfile::addToEndOfQueue)
         }
     }
 }
