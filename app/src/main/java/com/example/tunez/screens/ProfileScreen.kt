@@ -1,10 +1,9 @@
 package com.example.tunez.screens
 
 import android.content.Intent
-import android.os.Parcel
-import android.os.Parcelable
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,14 +18,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,7 +36,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,35 +46,21 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.adamratzman.spotify.models.PlayableUri
 import com.example.tunez.R
 import com.example.tunez.activities.BaseActivity
 import com.example.tunez.activities.LoginActivity
-import com.example.tunez.activities.NavBarItems
-import com.example.tunez.activities.PlaylistActivity
-import com.example.tunez.activities.Routes
 import com.example.tunez.activities.user
-import com.example.tunez.content.Playlist
-import com.example.tunez.roles.User
-import com.example.tunez.viewmodels.AppViewModelProvider
+import com.example.tunez.content.Track
 import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ProfileUiState
 import com.example.tunez.viewmodels.ProfileViewModel
 import com.example.tunez.viewmodels.UserInfo
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import com.google.gson.Gson
 import com.skydoves.landscapist.glide.GlideImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.koin.androidx.compose.inject
 
 @Composable
@@ -201,7 +185,7 @@ fun ProfileScreen(activity: BaseActivity, modifier: Modifier = Modifier, ){
                     AllUsersList(uiState, vmNav)
                 }
                 if(uiState.user.role == "artist"){
-                    ArtistPanel(uiState, vmNav)
+                    ArtistPanel(uiState, vmNav, vmNav::goToArtistEditTrack)
                 }
             }
 //        vm.getAllUsers()
@@ -270,7 +254,7 @@ fun UserRow(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ArtistPanel(uiState: ProfileUiState, vmController: NavControllerViewModel){
+fun ArtistPanel(uiState: ProfileUiState, vmController: NavControllerViewModel, onClick: (Track) -> Unit, isArtist: Boolean = true){
     Text(
         text = "Artist panel",
         textAlign = TextAlign.Center,
@@ -284,38 +268,63 @@ fun ArtistPanel(uiState: ProfileUiState, vmController: NavControllerViewModel){
     FlowRow(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        maxItemsInEachRow = 1,
+        maxItemsInEachRow = 2,
         modifier = Modifier.padding(bottom = 20.dp)
     ){
-//        uiState.allUsers.forEach {
-//            UserRow(it, vmController::goToUserProfile)
-//        }
-//        Row(modifier = Modifier.fillMaxWidth()) {
-            Button(
+        uiState.artistTracks.forEach {
+            ArtistTrackRow(it, onClick)
+        }
+        if(isArtist) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                onClick = {
-                    vmController.goToAddTrack()
-                },
+                    .fillMaxWidth(0.47f)
+                    .height(40.dp),
+//            .background(MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text(text = "Add track")
+                Image(
+                    painter = painterResource(id = R.drawable.plus),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .fillMaxWidth(0.2f)
+                        .padding(0.dp, 5.dp)
+                        .clickable {
+                            vmController.goToAddTrack()
+                        },
+                )
             }
-//            Button(
-//                modifier = Modifier
-//                    .weight(1f)
-//                    .padding(8.dp),
-//                onClick = {
-////                    vmController.goBack()
-////                    vm.addPlaylist(name)
-////                    vm.makeToast("$name added")
-//                },
-//            ) {
-//                Text(text = "Add")
-//            }
-//        }
+        }
     }
 }
+
+@Composable
+fun ArtistTrackRow(track: Track, onClick: (Track) -> Unit){
+    val background = MaterialTheme.colorScheme.background
+    val colorBlocked = MaterialTheme.colorScheme.tertiaryContainer
+    Log.i("ArtistTrackRow", track.toString())
+    // Чтобы color успевало инициализироваться до использования
+    var color by remember { mutableStateOf(background) }
+    LaunchedEffect(track.blocked) {
+        color = if (track.blocked) colorBlocked else background
+    }
+    Log.i("ArtistTrackRow", "$track $color")
+
+    Row(modifier = Modifier
+        .fillMaxWidth(0.47f)
+        .background(color, shape = RoundedCornerShape(10.dp))
+        .clickable { onClick.invoke(track) },
+        horizontalArrangement = Arrangement.Center) {
+        Text(
+            text = "${track.name}",
+            fontSize = 24.sp,
+            modifier = Modifier.padding(0.dp, 5.dp),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+
 @Composable
 fun FavouritePlaylist(uiState: ProfileUiState, vmController: NavControllerViewModel){
     Box(contentAlignment = Alignment.TopCenter,
@@ -385,5 +394,11 @@ fun PlaylistGrid(uiState: ProfileUiState, vmController: NavControllerViewModel){
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun ArtistTrackRowPreview(){
+    ArtistTrackRow(track = Track(), onClick = {})
 }
 

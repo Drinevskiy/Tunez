@@ -59,6 +59,7 @@ import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.ProfileViewModel
 import com.example.tunez.viewmodels.UserInfo
 import com.skydoves.landscapist.glide.GlideImage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.inject
 import kotlin.reflect.KFunction1
@@ -68,7 +69,8 @@ fun ProfileInfoScreen(userInfo: UserInfo, modifier: Modifier = Modifier, ){
     val vmController: NavControllerViewModel by inject()
     val vm: ProfileViewModel by inject()
     val uiState by vm.profileUiState.collectAsState()
-    LaunchedEffect(Unit) {
+    LaunchedEffect(uiState.artistTracks) {
+//        delay(1000)
         vm.getInfoAboutUser(userInfo)
     }
     Column(
@@ -169,6 +171,12 @@ fun ProfileInfoScreen(userInfo: UserInfo, modifier: Modifier = Modifier, ){
                         .padding(top = 10.dp, bottom = 20.dp)
                         .fillMaxWidth()
                 )
+            }
+            if(userInfo.role == "artist") {
+//                vm.getArtistTracks(userInfo.uid!!)
+                if (uiState.artistTracks.isNotEmpty()) {
+                    ArtistPanel(uiState, vmController, vmController::goToArtistEditTrackForAdmin, false)
+                }
             }
         }
 

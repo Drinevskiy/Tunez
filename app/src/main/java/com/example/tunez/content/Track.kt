@@ -1,14 +1,16 @@
-//package com.example.tunez.content
-//
+package com.example.tunez.content
+
+import java.time.Duration
+
 //import com.example.tunez.roles.Artist
-//
-//class Track() {
-//    private var durationInSeconds: Int
-//        get() {
-//            TODO()
-//        }
-//        set(value) {}
-//    private lateinit var name: String
-//    private lateinit var artist: Artist
-//    private lateinit var album: Album
-//}
+
+data class Track(
+    var id: String? = null,
+    var name: String? = null,
+//    var durationInMs: Long? = null,
+    var blocked: Boolean = false,
+    var edited: Boolean = false,
+    var reason: String? = null,
+    var count: Long = 0,
+    var artistId: String? = null,
+)

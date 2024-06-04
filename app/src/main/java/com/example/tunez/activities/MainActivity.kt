@@ -3,6 +3,8 @@ package com.example.tunez.activities
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
@@ -35,7 +37,9 @@ import com.example.tunez.content.Playlist
 import com.example.tunez.screens.AddPlaylistScreen
 import com.example.tunez.screens.AddTrackScreen
 import com.example.tunez.screens.ChoosePlaylistScreen
+import com.example.tunez.screens.EditTrackScreen
 import com.example.tunez.screens.HomeScreen
+import com.example.tunez.screens.InfoTrackForAdminScreen
 import com.example.tunez.screens.PlaylistScreen
 import com.example.tunez.screens.ProfileInfoScreen
 import com.example.tunez.screens.ProfileScreen
@@ -43,22 +47,24 @@ import com.example.tunez.screens.RecommendationsScreen
 import com.example.tunez.screens.ReleasesScreen
 import com.example.tunez.screens.SearchScreen
 import com.example.tunez.screens.UserPlaylistScreen
-import com.example.tunez.ui.service.SpotifyService
 import com.example.tunez.ui.theme.TunezTheme
 import com.example.tunez.viewmodels.NavControllerViewModel
 import com.example.tunez.viewmodels.UserInfo
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
-import com.google.gson.Gson
 import kotlinx.serialization.json.Json
 import org.koin.androidx.compose.inject
+import kotlin.reflect.KProperty0
 
 var user: FirebaseUser? = Firebase.auth.currentUser
 class MainActivity : BaseActivity() {
 
     private val myApplication: SpotifyPlaygroundApplication
         get() = application as SpotifyPlaygroundApplication
+    val loadImage = registerForActivityResult(ActivityResultContracts.GetContent()){
+        Log.i("AddTrackScreen", it.toString())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +74,7 @@ class MainActivity : BaseActivity() {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    NavPage(this, myApplication.spotifyService)
+                    NavPage(this)
                 }
             }
         }
@@ -89,7 +95,7 @@ class MainActivity : BaseActivity() {
 }
 
 @Composable
-fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
+fun NavPage(activity: BaseActivity) {
 //    spotifyService.getDevices()
     val vm: NavControllerViewModel by inject()
     val navController = rememberNavController()
@@ -167,9 +173,9 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
                     navArgument("uid") { type = NavType.StringType }
                 )) {
                 val username = it.arguments?.getString("username") ?: "No name"
-                val email = it.arguments?.getString("email") ?: "No name"
-                val role = it.arguments?.getString("role") ?: "No name"
-                val uid = it.arguments?.getString("uid") ?: "No name"
+                val email = it.arguments?.getString("email") ?: "No email"
+                val role = it.arguments?.getString("role") ?: "user"
+                val uid = it.arguments?.getString("uid") ?: "No uid"
                 val userInfo = UserInfo(uid, username, email, role)
                 ProfileInfoScreen(userInfo = userInfo)
             }
@@ -201,7 +207,41 @@ fun NavPage(activity: BaseActivity, spotifyService: SpotifyService) {
                 UserPlaylistScreen(playlist = playlist)
             }
             composable(Routes.AddTrack.route) {
-                AddTrackScreen()
+                AddTrackScreen(activity)
+            }
+            composable(Routes.EditTrack.route + "?name={name}&blocked={blocked}&edited={edited}&reason={reason}&id={id}",
+                arguments = listOf(
+                    navArgument("name") { type = NavType.StringType },
+                    navArgument("blocked") { type = NavType.BoolType },
+                    navArgument("edited") { type = NavType.BoolType },
+                    navArgument("reason") { type = NavType.StringType },
+                    navArgument("id") { type = NavType.StringType }
+                )) {
+                val name = it.arguments?.getString("name") ?: "No name"
+                val blocked = it.arguments?.getBoolean("blocked") ?: false
+                val edited = it.arguments?.getBoolean("edited") ?: false
+                val reason = it.arguments?.getString("reason") ?: ""
+                val id = it.arguments?.getString("id")
+                val track = com.example.tunez.content.Track(id, name, blocked, edited, reason)
+                EditTrackScreen(track)
+            }
+            composable(Routes.InfoTrackForAdmin.route + "?name={name}&blocked={blocked}&edited={edited}&reason={reason}&id={id}&artistId={artistId}",
+                arguments = listOf(
+                    navArgument("name") { type = NavType.StringType },
+                    navArgument("blocked") { type = NavType.BoolType },
+                    navArgument("edited") { type = NavType.BoolType },
+                    navArgument("reason") { type = NavType.StringType },
+                    navArgument("id") { type = NavType.StringType },
+                    navArgument("artistId") { type = NavType.StringType }
+                )) {
+                val name = it.arguments?.getString("name") ?: "No name"
+                val blocked = it.arguments?.getBoolean("blocked") ?: false
+                val edited = it.arguments?.getBoolean("edited") ?: false
+                val reason = it.arguments?.getString("reason") ?: ""
+                val id = it.arguments?.getString("id")
+                val artistId = it.arguments?.getString("artistId")
+                val track = com.example.tunez.content.Track(id, name, blocked, edited, reason, artistId = artistId)
+                InfoTrackForAdminScreen(track)
             }
         }
         BottomNavigationBar(navController)
@@ -286,5 +326,6 @@ sealed class Routes(val route: String) {
     object UserPlaylist : Routes("user-playlist")
     object ProfileInfo : Routes("profile-info")
     object AddTrack : Routes("add-track")
-
+    object EditTrack : Routes("edit-track")
+    object InfoTrackForAdmin : Routes("info-track-for-admin")
 }

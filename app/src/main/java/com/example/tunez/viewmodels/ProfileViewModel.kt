@@ -8,6 +8,7 @@ import com.adamratzman.spotify.models.Track
 import com.example.tunez.activities.user
 import com.example.tunez.content.Playlist
 import com.example.tunez.roles.IAccount
+import com.example.tunez.roles.User
 import com.example.tunez.ui.service.SpotifyService
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -54,6 +56,14 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         _uiState.update {
             it.copy(
                 currentUserForAdmin = user
+            )
+        }
+    }
+
+    private fun updateArtistTracks(tracks: List<com.example.tunez.content.Track>){
+        _uiState.update {
+            it.copy(
+                artistTracks = tracks
             )
         }
     }
@@ -102,6 +112,9 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                     }
                                     updateAllUsers(allUsers)
                                 }
+                            }
+                            if(profileUiState.value.user.role == "artist"){
+                                getArtistTracks(profileUiState.value.user.uid!!)
                             }
                         }
                     }
@@ -691,6 +704,9 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
                                     favouritePlaylist = favouritePlaylist
                                 )
                             )
+                            if(userInfo.role == "artist"){
+                                getArtistTracks(userInfo.uid!!)
+                            }
                         }
                     }
                 }
@@ -829,12 +845,111 @@ class ProfileViewModel(val spotifyService: SpotifyService): ViewModel() {
         }
     }
 
+    fun getArtistTracks(uid: String){
+        Firebase.database.reference
+            .child("Users")
+            .child(uid)
+            .child("artistTracks").get()
+            .addOnCompleteListener { dataSnapshot2 ->
+                var artistTracks = listOf<com.example.tunez.content.Track>()
+                for(children in dataSnapshot2.result.children){
+                    val id = children.key
+                    val blocked = children.child("blocked").value.toString().toBoolean()
+                    val edited = children.child("edited").value.toString().toBoolean()
+                    val trackName = children.child("name").value.toString()
+                    val reason = children.child("reason").value.toString()
+                    val count = children.child("count").value.toString().toLongOrNull() ?: 0L
+                    val item = com.example.tunez.content.Track(id, trackName, blocked, edited, reason, count, uid)
+                    artistTracks = artistTracks.plus(item)
+                }
+                updateArtistTracks(artistTracks)
+            }
+    }
+    fun addTrackToArtistProfile(name: String) {
+        val db = Firebase.database.reference
+        val myTracksNode = db.child("Users")
+            .child(profileUiState.value.user.uid!!)
+            .child("artistTracks")
+            .push()
+        myTracksNode.setValue(mapOf(
+            "name" to name,
+            "blocked" to false,
+            "edited" to false,
+            "reason" to "",
+            "count" to 0)
+        )
+        val track = com.example.tunez.content.Track(
+            myTracksNode.key, name, blocked = false, edited = false, "", 0, profileUiState.value.user.uid)
+        updateArtistTracks(profileUiState.value.artistTracks.plus(track))
+    }
+
+    fun changeArtistTrack(track: com.example.tunez.content.Track) {
+        val db = Firebase.database.reference
+        val trackNode = db.child("Users")
+            .child(profileUiState.value.user.uid!!)
+            .child("artistTracks")
+            .child(track.id!!)
+        trackNode.child("name").setValue(track.name).addOnCompleteListener {
+            if (it.isSuccessful) {
+                trackNode.child("edited").setValue(true)
+            }
+        }
+    }
+
+    fun unbanArtistTrack(track: com.example.tunez.content.Track) {
+        val db = Firebase.database.reference
+        val trackNode = db.child("Users")
+            .child(track.artistId!!)
+            .child("artistTracks")
+            .child(track.id!!)
+        trackNode.child("blocked").setValue(false).addOnCompleteListener {
+            if (it.isSuccessful) {
+                trackNode.child("edited").setValue(false).addOnCompleteListener {
+                    trackNode.child("reason").setValue("").addOnCompleteListener {
+                        makeToast("${track.name} unban")
+                        getArtistTracks(track.artistId!!)
+                    }
+                }
+            }
+        }
+    }
+
+    fun banArtistTrack(track: com.example.tunez.content.Track, reason: String) {
+        val db = Firebase.database.reference
+        val trackNode = db.child("Users")
+            .child(track.artistId!!)
+            .child("artistTracks")
+            .child(track.id!!)
+        trackNode.child("blocked").setValue(true).addOnCompleteListener {
+            if (it.isSuccessful) {
+                trackNode.child("edited").setValue(false).addOnCompleteListener {
+                    trackNode.child("reason").setValue(reason).addOnCompleteListener {
+                        makeToast("${track.name} banned")
+                        getArtistTracks(track.artistId!!)
+                    }
+                }
+            }
+        }
+    }
+
+    fun deleteArtistTrack(track: com.example.tunez.content.Track) {
+        val db = Firebase.database.reference
+        db.child("Users")
+            .child(track.artistId!!)
+            .child("artistTracks")
+            .child(track.id!!).removeValue().addOnCompleteListener{
+                makeToast("${track.name} deleted")
+                getArtistTracks(track.artistId!!)
+            }
+    }
+
 }
 
 data class ProfileUiState(
     val user: IAccount = IAccount(),
     val allUsers: List<UserInfo> = listOf(),
     val currentUserForAdmin: IAccount = IAccount(),
+    val artistTracks: List<com.example.tunez.content.Track> = listOf(),
 )
 
 data class UserInfo(

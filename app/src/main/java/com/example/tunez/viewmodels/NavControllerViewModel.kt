@@ -86,6 +86,14 @@ class NavControllerViewModel: ViewModel()  {
     fun goToAddTrack() {
         navUiState.value.controller?.navigate(Routes.AddTrack.route)
     }
+
+    fun goToArtistEditTrack(track: com.example.tunez.content.Track) {
+        navUiState.value.controller?.navigate(Routes.EditTrack.route + "?name=${track.name}&blocked=${track.blocked}&edited=${track.edited}&reason=${track.reason}&id=${track.id}")
+    }
+
+    fun goToArtistEditTrackForAdmin(track: com.example.tunez.content.Track) {
+        navUiState.value.controller?.navigate(Routes.InfoTrackForAdmin.route + "?name=${track.name}&blocked=${track.blocked}&edited=${track.edited}&reason=${track.reason}&id=${track.id}&artistId=${track.artistId}")
+    }
 }
 
 data class NavUiState(
